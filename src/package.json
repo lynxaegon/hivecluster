@@ -1,0 +1,21 @@
+{
+  "name": "hivecluster",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "adaptive-accrual-failure-detector": "^0.1.1",
+    "debug": "^4.1.1",
+    "deep-equal": "^1.0.1",
+    "end-of-stream": "^1.4.1",
+    "ip": "^1.1.5",
+    "minimist": "^1.2.0",
+    "msgpack-lite": "^0.1.26",
+    "uuid": "^3.3.2"
+  }
+}
