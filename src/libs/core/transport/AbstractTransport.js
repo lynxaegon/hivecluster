@@ -6,6 +6,7 @@ const addPeer = Symbol('addPeer');
 
 module.exports = HiveCluster.BaseClass.extend({
 	init: function (name) {
+		this.name = name;
 		this[events] = new EventEmitter(this);
 		this[peers] = new Map();
 

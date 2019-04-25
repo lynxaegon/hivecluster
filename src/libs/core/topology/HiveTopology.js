@@ -3,15 +3,16 @@ const EventEmitter = require('events');
 const networkSeen = Symbol('networkSeen');
 const Node = require('./Node');
 const util = require("util");
-
+const extractPath = require("../../utils/graphlib.extractPath");
+const graphlib = require("graphlib");
 
 module.exports = HiveCluster.BaseClass.extend({
 	init: function (options) {
-		this.endpoint = options.endpoint;
-
 		this.events = new EventEmitter();
 
-		this.nodes = new Map();
+		this.networkGraph = new graphlib.Graph({
+			directed: false
+		});
 		this.peers = new Map();
 
 		// setInterval(() => {
@@ -27,50 +28,13 @@ module.exports = HiveCluster.BaseClass.extend({
 	get: function (id, create) {
 		create = create === undefined;
 
-		let node = this.nodes.get(id);
+		let node = this.networkGraph.node(id);
 		if (!node && create) {
 			node = new Node(id);
-			this.nodes.set(id, node);
+			this.networkGraph.setNode(id, node);
 		}
 
 		return node;
-	},
-	getNodeList: function () {
-		return this.nodes.values();
-	},
-	addReachability: function (node, peer, data) {
-
-		const wasReachable = node.isReachable();
-		// console.log("topology", peer.id, data);
-		if (node.addReachability(peer, data)) {
-			// Reachability changed, tell our peers about this
-			this.queueBroadcast();
-		}
-
-		if (!wasReachable) {
-			// console.log('HiveNode', node.id, 'now reachable');
-			debug('HiveNode', node.id, 'now reachable');
-			this.events.emit('available', node);
-		}
-	},
-	removeReachability: function (node, peer) {
-		const wasReachable = node.isReachable();
-
-		const result = node.removeReachability(peer);
-		if (result != -1) {
-			// Reachability changed, tell our peers about this
-			this.queueBroadcast();
-		}
-
-		if (!node.isReachable() && wasReachable) {
-			debug('HiveNode', node.id, 'no longer reachable');
-			this.nodes.delete(node.id);
-			this.events.emit('unavailable', node);
-		}
-		// else if(result == 1){
-		// 	console.log(node);
-		// 	this.events.emit('update', node);
-		// }
 	},
 	addPeer(peer) {
 		this.peers.set(peer.id, peer);
@@ -89,57 +53,95 @@ module.exports = HiveCluster.BaseClass.extend({
 			peer[networkSeen] = true;
 		}
 
-		const node = this.get(peer.id);
-		this.addReachability(node, peer, []);
+		// create the node and add it to the network
+		this.get(peer.id);
+		this.networkGraph.setEdge(HiveCluster.id, peer.id);
+
+		// cache paths
+		this.cacheNodePaths();
+
+		// broadcast new network to peers
+		this.queueBroadcast();
 	},
 	handleNodes: function (peer, data) {
-		console.log("============== HANDLE NODES ("+ peer.id +") ================");
-		console.log("Routing Table");
-		console.log(peer.id, data);
-		console.log("Routing Table END");
-		// Add the current peer to available items so that is not removed later
-		const available = new Set();
-		available.add(peer.id);
+		if(data.source == HiveCluster.id)
+			return;
 
-		// Expose all of the peers that can be seen by the other node
-		for (const p of data) {
+		console.log("============== New Routing Table ("+ peer.id +") ================");
+		// console.log("Routing Table");
+		// console.log(data.source, util.inspect(data, {showHidden: false, depth: null}));
+		// console.log("Routing Table END");
+		let requiresBroadcast = false;
+
+		const available = new Set();
+		available.add(data.source);
+		available.add(HiveCluster.id);
+
+		for (const p of data.nodes) {
 			if (p.id === HiveCluster.id) {
 				continue;
 			}
 
 			const node = this.get(p.id);
-			if (p.info) {
-				node.directAddress = p.info.address;
-				node.directPort = p.info.port;
-				// debug("RECV info [from: "+peer.id+"]:", node.id, "direct:", node.directAddress + ":" + node.directPort);
-			}
-
-			console.log("handle nodes peer", peer.id);
-			// TODO: nodes should announce PEER ID + HOPS to it
-			var newPath = [peer.id, ...p.path];
-
-			console.log(p.id, "path", node.getPath(), "new path", newPath);
-
-			if(!node.isReachable() && p.path.indexOf(HiveCluster.id) != -1 && node.getPath().indexOf()){
-				console.log("not reacheable, but found reachable through me!");
-			}
-			this.addReachability(node, peer, newPath);
-
+			node.decodeInfo(p.info);
+			this.networkGraph.setEdge(data.source, p.id);
 			available.add(p.id);
 		}
 
 		// Go through the peers and remove the peer from others
-		for (const other of this.nodes.values()) {
-			if (!available.has(other.id)) {
-				this.removeReachability(other, peer);
+		let nodes = this.networkGraph.nodes();
+		for (const otherID of nodes) {
+			if (!available.has(otherID) && this.networkGraph.hasEdge(data.source, otherID)) {
+				this.networkGraph.removeEdge(data.source, otherID);
+				// console.log("removed edge:", data.source, otherID);
+				requiresBroadcast = true;
 			}
 		}
-		console.log("========================================");
+		const sinks = this.networkGraph.sinks();
+		for (const nodeID of sinks) {
+			const node = this.networkGraph.node(nodeID);
+			this.networkGraph.removeNode(nodeID);
+			// console.log("removed node:", nodeID);
+			if(HiveCluster.id != nodeID)
+				this.events.emit("unavailable", node);
+			requiresBroadcast = true;
+		}
+
+		// cache paths
+		this.cacheNodePaths();
+		// console.log("======================================== requiresBroadcast", requiresBroadcast);
+
+		if(requiresBroadcast){
+			this.queueBroadcast();
+		} else {
+			this.queueBroadcast(peer, data);
+		}
+
+		this.viewNetwork();
 	},
 	handleDisconnect: function (peer) {
-		for (const node of this.nodes.values()) {
-			this.removeReachability(node, peer);
+		let nodes = this.networkGraph.nodes();
+		for (const otherID of nodes) {
+			if (this.networkGraph.hasEdge(otherID, peer.id)) {
+				this.networkGraph.removeEdge(otherID, peer.id);
+				// console.log("removed edge:", otherID, peer.id);
+			}
 		}
+
+		nodes = this.networkGraph.sinks();
+		for (const nodeID of nodes) {
+			const node = this.networkGraph.node(nodeID);
+			this.networkGraph.removeNode(nodeID);
+			// console.log("removed node:", nodeID, node);
+			if(HiveCluster.id != nodeID)
+				this.events.emit("unavailable", node);
+		}
+
+		// cache paths
+		this.cacheNodePaths();
+
+		this.queueBroadcast();
+		this.viewNetwork();
 	},
 	handleMessage: function (peer, msg) {
 		const source = msg[0];
@@ -147,9 +149,8 @@ module.exports = HiveCluster.BaseClass.extend({
 		const message = msg[2];
 
 
-		const targetNode = this.nodes.get(target);
-		const sourceNode = this.nodes.get(source);
-
+		const targetNode = this.networkGraph.node(target);
+		const sourceNode = this.networkGraph.node(source);
 
 		// Protect against messages from unknown nodes
 		if (!sourceNode)
@@ -163,31 +164,42 @@ module.exports = HiveCluster.BaseClass.extend({
 		} else {
 			// Emit event for all other messages
 			this.events.emit('message', {
-				returnPath: sourceNode,
+				node: sourceNode,
 				type: message.type,
 				data: message.data
 			});
 		}
 	},
-	queueBroadcast: function () {
+	queueBroadcast: function (peer, data) {
+		if(peer && data){
+			data.visited++;
+			if(data.visited >= this.networkGraph.nodes().length){
+				return;
+			}
+
+			for (const p of this.peers.values()) {
+				if(p.id == peer.id)
+					continue;
+				p.write('nodes', data);
+			}
+			return;
+		}
+
 		if (this.broadcastTimeout)
 			return;
 
 		this.broadcastTimeout = setTimeout(() => {
-			if (debug.enabled) {
-				debug('Broadcasting routing to all connected peers');
-				debug('Peers:', Array.from(this.peers.keys()).join(', '));
-
-				debug('Nodes:');
-				for (const node of this.nodes.values()) {
-					debug(node.id, 'via', node.getPath().join(' -> '));
-				}
-			}
-
 			const routingTable = this.getRoutingTable();
+			if(routingTable === null)
+				return;
 
+			// console.log("routing table:", routingTable);
 			for (const peer of this.peers.values()) {
-				peer.write('nodes', routingTable);
+				peer.write('nodes', {
+					nodes: routingTable,
+					visited: 1,
+					source: HiveCluster.id
+				});
 			}
 
 			this.broadcastTimeout = null;
@@ -196,21 +208,58 @@ module.exports = HiveCluster.BaseClass.extend({
 	getRoutingTable: function(){
 		const nodes = [];
 		let data;
-		for (const node of this.nodes.values()) {
+		let node;
+		let neighbors = this.networkGraph.neighbors(HiveCluster.id);
+		if(!neighbors)
+			return null;
+
+		for (const nodeId of neighbors) {
+			node = this.networkGraph.node(nodeId);
 			data = {
-				id: node.id,
-				path: node.getPath()
+				id: nodeId
 			};
-			if(node.getDistance() == 0){
-				data.info = {
-					address: node.peer.address,
-					port: node.peer.port,
-				};
+			if(node.distance == 0){
+				data.info = node.encodeInfo();
 			}
 
 			nodes.push(data);
 		}
 
 		return nodes;
+	},
+	cacheNodePaths: function(){
+		let nodes = this.networkGraph.nodes();
+		let paths = graphlib.alg.dijkstra(this.networkGraph, HiveCluster.id, null, (v) => this.networkGraph.nodeEdges(v));
+		for(const nodeID of nodes){
+			if(nodeID == HiveCluster.id)
+				continue;
+
+			const node = this.get(nodeID);
+			const wasReacheable = node.isReachable();
+			try {
+				let oldPeer = node.peer;
+				let path = extractPath(paths, HiveCluster.id, nodeID);
+				node.setPeer(this.peers.get(path.path[0]), path.distance);
+				if(node.peer != oldPeer){
+					if(wasReacheable) {
+						console.log("Updated", node.id, "reacheable via", node.peer.id, "(old path:"+ oldPeer.id +")");
+						this.events.emit("update", node);
+					}
+					else {
+						// console.log(node.id, "found path:", path);
+						this.events.emit("available", node);
+					}
+					// console.log("NETWORK:", util.inspect(this.networkGraph.edges(), {showHidden: false, depth: null}));
+				}
+			}
+			catch(e){
+				node.removePeer();
+				if(wasReacheable)
+					this.events.emit("update", node);
+			}
+		}
+	},
+	viewNetwork: function(){
+		// console.log("NETWORK:", util.inspect(this.networkGraph.edges(), {showHidden: false, depth: null}));
 	}
 });

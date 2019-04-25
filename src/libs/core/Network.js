@@ -5,7 +5,10 @@ const HiveNode = require('./HiveNode');
 const HiveTopology = require('./topology/HiveTopology');
 const topologySymbol = Symbol('topology');
 const nodesSymbol = Symbol('nodes');
+const directConnections = Symbol("directConnections");
 
+// TODO: Multiple transports are supported, but some functionality doesn't work
+// TODO: (ex: FullMesh works only for the first transport)
 module.exports = HiveCluster.BaseClass.extend({
 	init: function(options){
 		if(!options.name)
@@ -14,10 +17,13 @@ module.exports = HiveCluster.BaseClass.extend({
 		this.debug = HiveCluster.debug("HiveCluster");
 		this[events] = new EventEmitter();
 
-		this.name = options.name;
+		this.name = options.name + "-" + options.transport.name;
+		this.fullMesh = options.fullMesh || false;
+
+		this.directConnectionTimeout = false;
 
 		this.transports = [];
-		this.active = false;
+		this.started = false;
 
 		const topology = this[topologySymbol] = new HiveTopology(options);
 		const nodes = this[nodesSymbol] = new Map();
@@ -26,6 +32,7 @@ module.exports = HiveCluster.BaseClass.extend({
 			nodes.set(n.id, node);
 			this[events].emit('node:available', node);
 			node.emit('available');
+			this[directConnections](options.transport);
 		});
 
 		topology.on('update', n => {
@@ -35,6 +42,7 @@ module.exports = HiveCluster.BaseClass.extend({
 
 			this[events].emit('node:update', node);
 			node.emit('update');
+			this[directConnections](options.transport);
 		});
 
 		topology.on('unavailable', n => {
@@ -48,10 +56,10 @@ module.exports = HiveCluster.BaseClass.extend({
 		});
 
 		topology.on('message', msg => {
-			const node = nodes.get(msg.returnPath.id);
+			const node = nodes.get(msg.node.id);
 
 			const event = {
-				returnPath: node,
+				node: node,
 				type: msg.type,
 				data: msg.data
 			};
@@ -60,6 +68,26 @@ module.exports = HiveCluster.BaseClass.extend({
 			node.emit('message', event);
 		});
 
+		this[directConnections] = (transport) => {
+			if(!this.fullMesh)
+				return;
+
+			clearTimeout(this.directConnectionTimeout);
+			this.directConnectionTimeout = setTimeout(() => {
+				let socket;
+				for(let node of this[nodesSymbol].values()){
+					if(!node.isDirect()){
+						socket = node.getDirectAddress();
+						if(socket !== null) {
+							console.log("connecting directly", socket.address, socket.port);
+							transport.addPeer(socket.address, socket.port);
+						}
+					}
+				}
+			}, 1000);
+		};
+
+		this.addTransport(options.transport);
 	},
 	on: function(event, handler){
 		this[events].on(event, handler);
@@ -101,7 +129,7 @@ module.exports = HiveCluster.BaseClass.extend({
 		});
 	},
 	stop: function(){
-		if(	!this.active)
+		if(	!this.started)
 			return Promise.resolve(false);
 
 		return Promise.all(

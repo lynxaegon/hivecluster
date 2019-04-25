@@ -136,7 +136,9 @@ const commands = {
 	_kv: {
 		DEBUG: "null"
 	},
-	start: function(){
+	start: function(count){
+		count = count || TTY_POOL.length;
+		var total = 0;
 		for(var i in TTY_POOL){
 			(function(index, tty){
 				clearTTY(tty);
@@ -150,6 +152,10 @@ const commands = {
 					commands.spawn.apply(commands.spawn, args);
 				}, delay + (i * 50));
 			})(i, TTY_POOL[i]);
+			total++;
+			if(total >= count){
+				break;
+			}
 		}
 	},
 	stop: function(){

@@ -16,7 +16,7 @@ module.exports = HiveCluster.BaseClass.extendObject(EventEmitter,{
 		return this[wrapped].isReachable();
 	},
 	getDistance: function(){
-		return this[wrapped].getDistance();
+		return this[wrapped].distance;
 	},
 	getDirectAddress: function(){
 		if(!this[wrapped].directAddress)
@@ -28,10 +28,10 @@ module.exports = HiveCluster.BaseClass.extendObject(EventEmitter,{
 		};
 	},
 	getPath: function(){
-		return this[wrapped].getPath();
-	},
-	getPeer: function(){
-		return this[wrapped].peer;
+		if(!this[wrapped].peer)
+			return null;
+
+		return this[wrapped].peer.id;
 	},
 	isDirect: function(){
 		return this[wrapped].direct;

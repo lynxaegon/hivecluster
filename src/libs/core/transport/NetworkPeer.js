@@ -66,7 +66,6 @@ module.exports = Peer.extend({
 			this.handleDisconnect();
 		}
 	},
-	// TODO: inject reply packets here
 	write(type, payload) {
 		if (!this.socket) {
 			this.debug('No socket but tried to send', type, 'with data', payload);
@@ -76,6 +75,7 @@ module.exports = Peer.extend({
 		if(type != "ping")
 			this.debug('Sending', type, 'with data', payload);
 		const data = msgpack.encode([String(type), payload]);
+		// console.log("Sending data length:", data.length);
 		try {
 			this.socket.write(data);
 		} catch (err) {

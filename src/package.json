@@ -11,8 +11,8 @@
   "dependencies": {
     "adaptive-accrual-failure-detector": "^0.1.1",
     "debug": "^4.1.1",
-    "deep-equal": "^1.0.1",
     "end-of-stream": "^1.4.1",
+    "graphlib": "github:lynxaegon/graphlib#master",
     "ip": "^1.1.5",
     "minimist": "^1.2.0",
     "msgpack-lite": "^0.1.26",
