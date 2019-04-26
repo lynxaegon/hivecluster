@@ -33,7 +33,7 @@ module.exports = HiveCluster.BaseClass.extend({
 		for(let network of this.networks){
 			network.start().then((result) => {
 				this.setup(network);
-				console.log("started -> ", result, "GUID: ", HiveCluster.id);
+				console.log("started -> ", result, "GUID:", HiveCluster.id);
 			}).catch((result) => {
 				console.log("started catch -> ", result);
 			});
