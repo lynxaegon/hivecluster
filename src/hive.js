@@ -8,6 +8,7 @@ const modules = {
 	HiveNetwork: "libs/core/HiveNetwork",
 	TCPTransport: "libs/tcp/TCPTransport",
 	WSTransport: "libs/ws/WSTransport",
+	HTTPTransport: "libs/http/HTTPTransport",
 };
 for(let moduleName in modules){
 	global.HiveCluster[moduleName] = require(modules[moduleName]);
@@ -35,11 +36,14 @@ const ClientsNetwork = new HiveCluster.HiveNetwork({
 	name: "ExoSkeleton-TestNetwork"
 });
 ClientsNetwork.addTransport(
-	new HiveCluster.WSTransport({
-		port: argv.port - 1
-	})
+	new HiveCluster.HTTPTransport()
 );
 
 ClientsNetwork.start();
 
-// NodesNetwork.on
+ClientsNetwork.on("/http", (httpPeer) => {
+	httpPeer.body("hello world!" + NodesNetwork.nodes.length);
+	httpPeer.body("\ntime: " + Date.now());
+
+	httpPeer.end();
+});

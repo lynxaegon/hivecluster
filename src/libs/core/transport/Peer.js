@@ -6,6 +6,7 @@ const pingCheckInterval = 1000;
 
 module.exports = HiveCluster.BaseClass.extend({
 	init: function(transport){
+		this.transport = transport;
 		this.id = transport.id;
 		const ns = transport.debug ? transport.debug.namespace + ":peer" : "HiveCluster:peer";
 		this.debug = HiveCluster.debug(ns);

@@ -17,6 +17,7 @@ module.exports = HiveCluster.BaseClass.extend({
 		this.debug = HiveCluster.debug("HiveCluster");
 		this[events] = new EventEmitter();
 
+		this.hiveNetworkName = options.name;
 		this.name = options.name + "-" + options.transport.name;
 		this.fullMesh = options.fullMesh || false;
 
@@ -99,11 +100,15 @@ module.exports = HiveCluster.BaseClass.extend({
 		this.transports.push(transport);
 
 		transport.on('connected', peer => this[topologySymbol].addPeer(peer));
+		transport.on('_hiveNetworkEvent', (...args) => {
+			this[events].emit.call(this[events], "_hiveNetworkEvent", ...args);
+		});
 
 		if(this.started) {
 			transport.start({
 				id: HiveCluster.id,
-				name: this.name
+				name: this.name,
+				hiveNetworkName: this.hiveNetworkName
 			});
 		}
 	},
@@ -115,7 +120,8 @@ module.exports = HiveCluster.BaseClass.extend({
 
 		const options = {
 			id: HiveCluster.id,
-			name: this.name
+			name: this.name,
+			hiveNetworkName: this.hiveNetworkName
 		};
 
 		this.started = true;

@@ -62,7 +62,7 @@ module.exports = HiveCluster.BaseClass.extend({
 		return Promise.resolve(true);
 	},
 	stop: function(){
-		if(! this.started) {
+		if(!this.started) {
 			return Promise.resolve(false);
 		}
 
@@ -76,3 +76,4 @@ module.exports = HiveCluster.BaseClass.extend({
 });
 
 module.exports.addPeer = addPeer;
+module.exports.events = events;

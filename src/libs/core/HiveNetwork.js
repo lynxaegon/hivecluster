@@ -84,6 +84,10 @@ module.exports = HiveCluster.BaseClass.extend({
 				console.log("Invalid message!", msg);
 			}
 		});
+
+		network.on("_hiveNetworkEvent", (...args) => {
+			this.emit.apply(this, args);
+		});
 	},
 	on: function (event, handler) {
 		this[events].on(event, handler);
@@ -92,7 +96,6 @@ module.exports = HiveCluster.BaseClass.extend({
 		this[events].removeListener(event, handler);
 	},
 	emit: function(event){
-		Array.prototype.shift.call(arguments, this);
 		this[events].emit.apply(this[events], arguments);
 	}
 });
