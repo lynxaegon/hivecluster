@@ -4,12 +4,12 @@ const FailureDetector = require('adaptive-accrual-failure-detector');
 const pingInterval = 5000;
 const pingCheckInterval = 1000;
 
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function(transport){
 		this.transport = transport;
 		this.id = transport.id;
 		const ns = transport.debug ? transport.debug.namespace + ":peer" : "HiveCluster:peer";
-		this.debug = HiveCluster.debug(ns);
+		this.debug = HiveClusterModules.debug(ns);
 		this.events = new EventEmitter();
 		this.timeouts = {};
 		this.intervals = {};
@@ -20,7 +20,7 @@ module.exports = HiveCluster.BaseClass.extend({
 		this.events.on('auth', msg => {
 			this.processAuthPackage(msg);
 
-			this.debug = HiveCluster.debug(ns + ':' + msg.id);
+			this.debug = HiveClusterModules.debug(ns + ':' + msg.id);
 			if(this.timeouts.auth){
 				clearTimeout(this.timeouts.auth);
 			}

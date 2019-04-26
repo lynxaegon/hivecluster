@@ -4,7 +4,7 @@ const seq = Symbol("seq");
 const _seq = Symbol("_seq");
 const Network = require("./Network");
 
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function(options){
 		this.options = options;
 		this.networks = [];

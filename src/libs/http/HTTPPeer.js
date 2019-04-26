@@ -2,7 +2,7 @@ const httpResult = Symbol("httpResult");
 const reqSymbol = Symbol("req");
 const resSymbol = Symbol("res");
 const endSymbol = Symbol("ended");
-const debug = HiveCluster.debug("HiveCluster:http:peer");
+const debug = HiveClusterModules.debug("HiveCluster:http:peer");
 
 const url = require('url');
 //////////////////////////////////////////////////////////////
@@ -10,7 +10,7 @@ const url = require('url');
 // https://www.npmjs.com/package/formidable
 //////////////////////////////////////////////////////////////
 
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function(req, res){
 		let self = this;
 		let qs = url.parse(req.url, true);

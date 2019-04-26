@@ -1,4 +1,4 @@
-const debug = HiveCluster.debug("HiveCluster:HiveTopology");
+const debug = HiveClusterModules.debug("HiveCluster:HiveTopology");
 const EventEmitter = require('events');
 const networkSeen = Symbol('networkSeen');
 const Node = require('./Node');
@@ -6,7 +6,7 @@ const util = require("util");
 const extractPath = require("../../utils/graphlib.extractPath");
 const graphlib = require("graphlib");
 
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function (options) {
 		this.events = new EventEmitter();
 

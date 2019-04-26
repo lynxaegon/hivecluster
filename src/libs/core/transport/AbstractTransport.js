@@ -4,14 +4,14 @@ const events = Symbol('events');
 const peers = Symbol('peers');
 const addPeer = Symbol('addPeer');
 
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function (name) {
 		this.name = name;
 		this[events] = new EventEmitter(this);
 		this[peers] = new Map();
 
 		this.started = false;
-		this.debug = HiveCluster.debug('HiveCluster:' + name);
+		this.debug = HiveClusterModules.debug('HiveCluster:' + name);
 
 		this[addPeer] = function(peer){
 			peer.on('connected', () => {

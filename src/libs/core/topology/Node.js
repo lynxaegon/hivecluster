@@ -1,4 +1,4 @@
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function (id) {
 		this.id = id;{}
 		this.directAddress = null;

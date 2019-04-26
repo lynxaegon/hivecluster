@@ -9,12 +9,12 @@ const directConnections = Symbol("directConnections");
 
 // TODO: Multiple transports are supported, but some functionality doesn't work
 // TODO: (ex: FullMesh works only for the first transport)
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	init: function(options){
 		if(!options.name)
 			throw new Error('Network name is required');
 
-		this.debug = HiveCluster.debug("HiveCluster");
+		this.debug = HiveClusterModules.debug("HiveCluster");
 		this[events] = new EventEmitter();
 
 		this.hiveNetworkName = options.name;

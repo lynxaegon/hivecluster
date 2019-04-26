@@ -1,4 +1,4 @@
-module.exports = HiveCluster.BaseClass.extend({
+module.exports = HiveClusterModules.BaseClass.extend({
 	start: function(transport){
 		this.transport = transport;
 		this.search();

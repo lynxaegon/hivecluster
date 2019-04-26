@@ -1,7 +1,7 @@
 const EventEmitter = require('events').EventEmitter;
 const wrapped = Symbol('wrapped');
 
-module.exports = HiveCluster.BaseClass.extendObject(EventEmitter,{
+module.exports = HiveClusterModules.BaseClass.extendObject(EventEmitter,{
 	init: function(other){
 		this._super.call(this);
 		this[wrapped] = other;

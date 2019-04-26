@@ -1,5 +1,5 @@
 const uuidv4 = require("uuid/v4");
-module.exports = new (HiveCluster.BaseClass.extend({
+module.exports = new (HiveClusterModules.BaseClass.extend({
 	TIME_UNIT: {
 		MILLISECONDS: "MILLISECONDS",
 		MICROSECONDS: "MICROSECONDS",
