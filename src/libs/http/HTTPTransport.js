@@ -23,10 +23,19 @@ module.exports = AbstractTransport.extend({
 				};
 
 				this.server = http.createServer((req, res) => {
-					this[events].emit('_hiveNetworkEvent', "/http",
-						new HTTPPeer(req, res)
+					req.body = [];
+					req.on('error', (err) => {
+						console.log(err);
+					}).on('data', (chunk) => {
+						req.body.push(chunk);
+					}).on('end', () => {
+						req.body = Buffer.concat(req.body).toString();
+
+						this[events].emit('_hiveNetworkEvent', "/http",
+							new HTTPPeer(req, res)
 							.header("HIVE-CLUSTER-ID", options.hiveNetworkName)
-					);
+						);
+					});
 				}).listen(this.options.port, listenCallback).on('error', reject);
 			});
 		});

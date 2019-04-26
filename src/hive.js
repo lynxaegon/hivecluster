@@ -44,6 +44,7 @@ ClientsNetwork.start();
 ClientsNetwork.on("/http", (httpPeer) => {
 	httpPeer.body("hello world!" + NodesNetwork.nodes.length);
 	httpPeer.body("\ntime: " + Date.now());
-
+	// httpPeer.body("\nurl: " + httpPeer.url());
+	// httpPeer.body("\nquery: " + JSON.stringify(httpPeer.query()));
 	httpPeer.end();
 });

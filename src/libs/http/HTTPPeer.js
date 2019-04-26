@@ -4,18 +4,40 @@ const resSymbol = Symbol("res");
 const endSymbol = Symbol("ended");
 const debug = HiveCluster.debug("HiveCluster:http:peer");
 
+const url = require('url');
+//////////////////////////////////////////////////////////////
+// TODO: implement `formidable` package for parsing requests
+// https://www.npmjs.com/package/formidable
+//////////////////////////////////////////////////////////////
+
 module.exports = HiveCluster.BaseClass.extend({
 	init: function(req, res){
-		this[reqSymbol] = req;
-		this[resSymbol] = res;
-		this[httpResult] = {
+		let self = this;
+		let qs = url.parse(req.url, true);
+
+		self[reqSymbol] = req;
+		self[resSymbol] = res;
+		self[httpResult] = {
 			_headers: {
 				"HIVE-NODE-ID": HiveCluster.id
 			},
 			_body: [],
+			_url: qs.pathname,
+			_query: {
+				post: req.body,
+				get: qs.query
+			},
 			_status: 200
 		};
-		this[endSymbol] = false;
+		self[endSymbol] = false;
+
+		console.log(self[httpResult]);
+	},
+	url: function(){
+		return this[httpResult]._url;
+	},
+	query: function(){
+		return this[httpResult]._query;
 	},
 	status: function(code){
 		if(this[endSymbol]) {
