@@ -1,5 +1,7 @@
 process.env.NODE_PATH = __dirname;
 require('module').Module._initPaths();
+const fs = require('fs');
+
 global.HiveClusterModules = {};
 global.HiveCluster = {};
 const modules = {
@@ -7,9 +9,11 @@ const modules = {
 	BaseClass: "libs/core/BaseClass",
 	Utils: "libs/utils/utils",
 	HiveNetwork: "libs/core/HiveNetwork",
+	HivePlugin: "libs/core/HivePlugin",
 	TCPTransport: "libs/tcp/TCPTransport",
 	WSTransport: "libs/ws/WSTransport",
 	HTTPTransport: "libs/http/HTTPTransport",
+	HivePluginManager: "libs/core/HivePluginManager",
 };
 for(let moduleName in modules){
 	global.HiveClusterModules[moduleName] = require(modules[moduleName]);
@@ -19,6 +23,9 @@ argv.port = argv.port || 5000;
 
 HiveCluster.args = argv;
 HiveCluster.id = HiveCluster.args.port + "";//HiveCluster.Utils.uuidv4();
+
+let startup = [];
+
 
 HiveCluster.NodesNetwork = new HiveClusterModules.HiveNetwork({
 	name: "ExoSkeleton-TestNetwork"
@@ -30,8 +37,11 @@ HiveCluster.NodesNetwork.addTransport(
 	}),
 	true
 );
+startup.push(
+	HiveCluster.NodesNetwork.start()
+);
 
-HiveCluster.NodesNetwork.start();
+
 
 
 HiveCluster.ClientsNetwork = new HiveClusterModules.HiveNetwork({
@@ -40,8 +50,9 @@ HiveCluster.ClientsNetwork = new HiveClusterModules.HiveNetwork({
 HiveCluster.ClientsNetwork.addTransport(
 	new HiveClusterModules.HTTPTransport()
 );
-
-HiveCluster.ClientsNetwork.start();
+startup.push(
+	HiveCluster.ClientsNetwork.start()
+);
 
 HiveCluster.ClientsNetwork.on("/http", (httpPeer) => {
 	httpPeer.body("hello world!" + HiveCluster.NodesNetwork.nodes.length);
@@ -49,4 +60,23 @@ HiveCluster.ClientsNetwork.on("/http", (httpPeer) => {
 	// httpPeer.body("\nurl: " + httpPeer.url());
 	// httpPeer.body("\nquery: " + JSON.stringify(httpPeer.query()));
 	httpPeer.end();
+});
+
+// Plugins
+let pluginList = [
+	{
+		path: "plugins/httpFrontend_plugin"
+	}
+];
+Promise.all(startup).then(function(){
+	console.log("Ready");
+	// TODO: connect to the network
+
+
+	// TODO: load plugins after we connected to the network
+	new HiveClusterModules.HivePluginManager(pluginList).load().then(() => {
+		console.log("plugins loaded");
+	});
+
+	// TODO: HiveCluster is fully ready! after plugins have been loaded
 });

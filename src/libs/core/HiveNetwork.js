@@ -30,14 +30,19 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		);
 	},
 	start: function(){
+		let promises = [];
 		for(let network of this.networks){
-			network.start().then((result) => {
-				this.setup(network);
-				console.log("started -> ", result, "GUID:", HiveCluster.id);
-			}).catch((result) => {
-				console.log("started catch -> ", result);
-			});
+			promises.push(
+				network.start().then((result) => {
+					this.setup(network);
+					console.log("started -> ", result, "GUID:", HiveCluster.id);
+				}).catch((result) => {
+					console.log("started catch -> ", result);
+				})
+			);
 		}
+
+		return Promise.all(promises);
 	},
 	stop: function(){
 		for(let network of this.networks){
