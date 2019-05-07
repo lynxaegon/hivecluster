@@ -1,6 +1,6 @@
 module.exports = HiveClusterModules.BaseClass.extend({
 	init: function (id) {
-		this.id = id;{}
+		this.id = id;
 		this.directAddress = null;
 		this.directPort = null;
 	},
@@ -11,6 +11,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this.peer.send([source, this.id, message]);
 	},
 	send(type, data) {
+		console.log("Send", arguments);
 		if (!this.peer)
 			return;
 

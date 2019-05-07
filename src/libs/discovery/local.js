@@ -4,16 +4,29 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this.search();
 	},
 	search: function(){
-		var port = this.transport.options.port - 1;
-		var port2 = this.transport.options.port - 2;
-		if(port >= 5000){
-			this.addPeer("127.0.0.1", port);
+		if(!this.transport.onDiscover)
+			throw new Error("onDiscover doesn't exist for the current transport!");
+
+		let port1 = this.transport.options.port - 1;
+		let port2 = this.transport.options.port - 2;
+		let list = [];
+		if(port1 >= 5000){
+			list.push({
+				address: "127.0.0.1",
+				port: port1
+			});
 		}
+
 		if(port2 >= 5000){
-			this.addPeer("127.0.0.1", port2);
+			list.push({
+				address: "127.0.0.1",
+				port: port2
+			});
 		}
-	},
-	addPeer: function(address, port){
-		this.transport.addPeer(address, port);
+		if(list.length == 0)
+			list = null;
+
+
+		this.transport.onDiscover(list);
 	}
 });

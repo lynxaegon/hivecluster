@@ -5,7 +5,7 @@ const http = require("http");
 // change dir to codebase
 process.chdir('src');
 
-var TTY_POOL = [10,11,12,13];
+var TTY_POOL = [8, 9, 10,11, 12,13, 14, 15];
 for(var i in TTY_POOL){
 	TTY_POOL[i] = "/dev/ttys" + TTY_POOL[i].toString().padStart(3, '0');
 	TTY_POOL[i] = {

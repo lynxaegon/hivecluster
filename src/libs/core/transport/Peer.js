@@ -47,6 +47,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 	on(event, handler) {
 		this.events.on(event, handler);
 	},
+	off(event, handler) {
+		this.events.on(event, handler);
+	},
 	getAuthPackage: function(){
 		return {
 			id: this.id
@@ -84,16 +87,16 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			this.debug('Disconnected gracefully');
 		}
 
-		for(var i in this.timeouts){
+		for(let i in this.timeouts){
 			clearTimeout(this.timeouts[i])
 		}
 
-		for(var i in this.intervals){
+		for(let i in this.intervals){
 			clearInterval(this.intervals[i])
 		}
 
 		this.connected = false;
-		this.events.emit('disconnected');
+		this.events.emit('disconnected', err);
 	},
 	disconnect() {
 		this.debug('Requesting disconnect from peer');

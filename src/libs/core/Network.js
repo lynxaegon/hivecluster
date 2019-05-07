@@ -17,9 +17,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this.debug = HiveClusterModules.debug("HiveCluster");
 		this[events] = new EventEmitter();
 
-		this.hiveNetworkName = options.name;
 		this.name = options.name + "-" + options.transport.name;
-		this.fullMesh = options.fullMesh || false;
 
 		this.directConnectionTimeout = false;
 
@@ -29,7 +27,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		const topology = this[topologySymbol] = new HiveTopology(options);
 		const nodes = this[nodesSymbol] = new Map();
 		topology.on('available', n => {
-			const node = new HiveNode(n);
+			const node = new HiveNode(n, options.name);
 			nodes.set(n.id, node);
 			this[events].emit('node:available', node);
 			node.emit('available');
@@ -69,8 +67,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			node.emit('message', event);
 		});
 
+		// TODO: enable direct connections
 		this[directConnections] = (transport) => {
-			if(!this.fullMesh)
+			if(!options.systemNetwork)
 				return;
 
 			clearTimeout(this.directConnectionTimeout);
@@ -90,11 +89,16 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		this.addTransport(options.transport);
 	},
+	getTopology: function (){
+		return this[topologySymbol].networkGraph;
+	},
 	on: function(event, handler){
 		this[events].on(event, handler);
+		return this;
 	},
 	off: function(event, handler){
 		this[events].removeListener(event, handler);
+		return this;
 	},
 	addTransport: function(transport) {
 		this.transports.push(transport);
@@ -107,8 +111,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		if(this.started) {
 			transport.start({
 				id: HiveCluster.id,
-				name: this.name,
-				hiveNetworkName: this.hiveNetworkName
+				name: this.name
 			});
 		}
 	},
@@ -120,8 +123,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		const options = {
 			id: HiveCluster.id,
-			name: this.name,
-			hiveNetworkName: this.hiveNetworkName
+			name: this.name
 		};
 
 		this.started = true;
@@ -144,5 +146,8 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			this.started = false;
 			return true;
 		});
+	},
+	setup: function(){
+		this[topologySymbol].start();
 	}
 });

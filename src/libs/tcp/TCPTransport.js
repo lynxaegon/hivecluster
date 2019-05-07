@@ -1,11 +1,12 @@
 const AbstractTransport = require("../core/transport/AbstractTransport");
 const addPeer = AbstractTransport.addPeer;
+const events = AbstractTransport.events;
 const TCPPeer = require("./TCPPeer");
 const net = require('net');
 
 const setupPeer = Symbol('setupPeer');
 const stoppables = Symbol('stoppables');
-
+const readiness = Symbol('readiness');
 
 module.exports = AbstractTransport.extend({
 	init: function(options){
@@ -17,7 +18,7 @@ module.exports = AbstractTransport.extend({
 
 		this[stoppables] = [];
 
-		this[setupPeer] = function(data) {
+		this[setupPeer] = (data) => {
 			const peer = new TCPPeer(this);
 			this[addPeer](peer);
 
@@ -25,7 +26,9 @@ module.exports = AbstractTransport.extend({
 			peer.tryConnect();
 
 			return peer;
-		}
+		};
+
+		this[readiness] = null;
 	},
 	start: function(options){
 		return this._super.apply(this, arguments).then(started => {
@@ -33,10 +36,10 @@ module.exports = AbstractTransport.extend({
 				return false;
 
 			return new Promise((resolve) => {
+				this[readiness] = resolve;
 				const listenCallback = () => {
 					this.port = this.server.address().port;
 					this.debug('Server started at port', this.port);
-					resolve();
 				};
 
 				this.server = net.createServer((socket) => {
@@ -67,12 +70,34 @@ module.exports = AbstractTransport.extend({
 			);
 		})
 	},
+	onDiscover: function(peers){
+		let nodes = [];
+		let readyNodes = 0;
+		if(peers !== null) {
+			for (let peer of peers) {
+				nodes.push(
+					this.addPeer(peer.address, peer.port)
+				);
+			}
+			for(let node of nodes){
+				node.on("connected", () => {
+					readyNodes++;
+					if(readyNodes == nodes.length)
+						this[readiness]();
+				});
+			}
+		}
+		else {
+			this[readiness]();
+		}
+	},
 	addPeer: function(address, port){
 		if(this.started){
-			this[setupPeer]({
+			return this[setupPeer]({
 				address: address,
 				port: port
 			});
 		}
+		return null;
 	}
 });

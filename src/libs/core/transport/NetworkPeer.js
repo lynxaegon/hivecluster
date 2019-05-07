@@ -77,9 +77,14 @@ module.exports = Peer.extend({
 		const data = msgpack.encode([String(type), payload]);
 		// console.log("Sending data length:", data.length);
 		try {
+			HiveCluster.EventBus.emit("/debug/record", {
+				to: String(this.id),
+				type: String(type),
+				payload: payload
+			});
 			this.socket.write(data);
 		} catch (err) {
-			this.debug('Could not write;', err);
+			console.log('Could not write;', err);
 		}
 	}
 });

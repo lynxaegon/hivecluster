@@ -9,74 +9,86 @@ const modules = {
 	BaseClass: "libs/core/BaseClass",
 	Utils: "libs/utils/utils",
 	HiveNetwork: "libs/core/HiveNetwork",
-	HivePlugin: "libs/core/HivePlugin",
+	HivePlugin: "libs/core/plugins/HivePlugin",
 	TCPTransport: "libs/tcp/TCPTransport",
 	WSTransport: "libs/ws/WSTransport",
 	HTTPTransport: "libs/http/HTTPTransport",
-	HivePluginManager: "libs/core/HivePluginManager",
+	HivePluginManager: "libs/core/plugins/HivePluginManager",
 };
 for(let moduleName in modules){
 	global.HiveClusterModules[moduleName] = require(modules[moduleName]);
 }
+global.HivePacket = require("libs/core/transport/HivePacket");
+
 let argv = require('minimist')(process.argv.slice(2));
 argv.port = argv.port || 5000;
 
 HiveCluster.args = argv;
 HiveCluster.id = HiveCluster.args.port + "";//HiveCluster.Utils.uuidv4();
+HiveCluster.EventBus = new (require('events').EventEmitter)();
 
-let startup = [];
-
-
-HiveCluster.NodesNetwork = new HiveClusterModules.HiveNetwork({
-	name: "ExoSkeleton-TestNetwork"
+HiveCluster.Nodes = new HiveClusterModules.HiveNetwork({
+	name: "ExoSkeleton-TestNetwork",
+	systemNetwork: true,
+	drawMap: true,
+	transports: [
+		new HiveClusterModules.TCPTransport({
+			port: HiveCluster.args.port,
+			discovery: new (require("libs/discovery/local"))
+		})
+	]
 });
-HiveCluster.NodesNetwork.addTransport(
-	new HiveClusterModules.TCPTransport({
-		port: HiveCluster.args.port,
-		discovery: new (require("libs/discovery/local"))
-	}),
-	true
-);
-startup.push(
-	HiveCluster.NodesNetwork.start()
-);
 
 
-
-
-HiveCluster.ClientsNetwork = new HiveClusterModules.HiveNetwork({
-	name: "ExoSkeleton-TestNetwork"
-});
-HiveCluster.ClientsNetwork.addTransport(
-	new HiveClusterModules.HTTPTransport()
-);
-startup.push(
-	HiveCluster.ClientsNetwork.start()
-);
-
-HiveCluster.ClientsNetwork.on("/http", (httpPeer) => {
-	httpPeer.body("hello world!" + HiveCluster.NodesNetwork.nodes.length);
-	httpPeer.body("\ntime: " + Date.now());
-	// httpPeer.body("\nurl: " + httpPeer.url());
-	// httpPeer.body("\nquery: " + JSON.stringify(httpPeer.query()));
-	httpPeer.end();
+HiveCluster.Clients = new HiveClusterModules.HiveNetwork({
+	name: "ExoSkeleton-TestNetwork",
+	transports: [
+		new HiveClusterModules.HTTPTransport({
+			port: HiveCluster.args.port - 4920 + 8000
+		})
+	]
 });
 
 // Plugins
-let pluginList = [
+let pluginListNodes = [
+	// {
+	// 	path: "plugins/recorder/notifier"
+	// }
+];
+// new (require("plugins/recorder/notifier"))({
+// 	path: "http://127.0.0.1:1722/recorder"
+// });
+HiveCluster.Nodes.start().then(() => {
+	// Network is ready, and connected
+	// HiveCluster.Nodes.on("test", function(){
+	// 	console.log(arguments);
+	// });
+	//
+	// HiveCluster.Nodes.send(new HivePacket()
+	// 	.setRequest("test")
+	// 	.setData("haha, hello")
+	// , (node) => {
+	// 	return node.getID() == HiveCluster.id;
+	// });
+	console.log("===== Loading Node network Plugins");
+	new HiveClusterModules.HivePluginManager(HiveCluster.Nodes, pluginListNodes).load().then(() => {
+		console.log("===== Finished loading Plugins");
+	});
+}).then(() => {
+
+});
+
+let pluginListClients = [
 	{
-		path: "plugins/httpFrontend_plugin"
+		path: "libs/http/httpRouter"
+	},
+	{
+		path: "plugins/monitoring/monitoring"
 	}
 ];
-Promise.all(startup).then(function(){
-	console.log("Ready");
-	// TODO: connect to the network
-
-
-	// TODO: load plugins after we connected to the network
-	new HiveClusterModules.HivePluginManager(pluginList).load().then(() => {
-		console.log("plugins loaded");
+HiveCluster.Clients.start().then(() => {
+	console.log("===== Loading Client network Plugins");
+	new HiveClusterModules.HivePluginManager(HiveCluster.Clients, pluginListClients).load().then(() => {
+		console.log("===== Finished loading Plugins");
 	});
-
-	// TODO: HiveCluster is fully ready! after plugins have been loaded
 });

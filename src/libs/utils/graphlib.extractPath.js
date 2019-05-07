@@ -5,7 +5,7 @@ function extractPath(paths, source, target) {
 		throw new Error("Invalid source node");
 	}
 	if (paths[target].predecessor === undefined && target !== source) {
-		throw new Error("Invalid target node");
+		throw new Error("Invalid target nodes");
 	}
 
 	return {

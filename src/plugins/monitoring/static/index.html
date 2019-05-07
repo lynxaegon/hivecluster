@@ -1,0 +1,86 @@
+<html>
+	<head>
+		<style>
+			body {
+				font-family: helvetica;
+				font-size: 15px;
+			}
+
+			#network {
+				width: 100%;
+				height: 90%;
+				z-index: 999;
+			}
+
+		</style>
+		<script src="cytoscape.min.js"></script>
+		<script src="https://unpkg.com/layout-base/layout-base.js"></script>
+		<script src="https://unpkg.com/avsdf-base/avsdf-base.js"></script>
+		<script src="cytoscape-avsdf.js"></script>
+		<script>
+			var topology = %%topology%%;
+			console.log(topology);
+
+			var nodes = [];
+			var edges = [];
+			for(var i in topology.nodes){
+				nodes.push({
+					data: {
+						id: topology.nodes[i].v
+					}
+				});
+			}
+			for(var i in topology.edges){
+				edges.push({
+					data: {
+						source: topology.edges[i].v,
+						target: topology.edges[i].w,
+						directed: 'false'
+					}
+				});
+			}
+
+			console.log("Nodes", nodes);
+			console.log("Edges", edges);
+
+			document.addEventListener('DOMContentLoaded', function(){
+				 window.cy = cytoscape({
+					container: document.getElementById('network'),
+					layout: {
+						name: 'avsdf',
+						animationDuration: 0,
+						nodeSeparation: 120
+					},
+					style: [
+						{
+							selector: 'node',
+							style: {
+								'label': 'data(id)',
+								'text-valign': 'center',
+								'color': '#000000',
+								'background-color': '#3a7ecf'
+							}
+						},
+
+						{
+							selector: 'edge',
+							style: {
+								'width': 2,
+								'line-color': '#3a7ecf',
+								'opacity': 0.5
+							}
+						}
+					],
+
+					elements: {
+						nodes: nodes,
+						edges: edges
+					}
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div id="network"></div>
+	</body>
+</html>

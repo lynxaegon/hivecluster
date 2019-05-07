@@ -1,7 +1,9 @@
 const plugins = Symbol("plugins");
+const hive = Symbol("hive");
 module.exports = HiveClusterModules.HivePlugin.extend({
-	init: function(list) {
+	init: function(hiveNetwork, list) {
 		this[plugins] = {};
+		this[hive] = hiveNetwork;
 
 		// inject plugins
 		let tmp;
@@ -30,7 +32,7 @@ module.exports = HiveClusterModules.HivePlugin.extend({
 		list.forEach((plugin) => {
 			result = result.then(function(){
 				console.log("== Loading plugin: '" + plugin.name + "'");
-				self[plugins][plugin.name].obj = new plugin.cls(plugin.options || {});
+				self[plugins][plugin.name].obj = new plugin.cls(self, self[hive], plugin.options || {});
 				return plugin.obj.pluginLoad();
 			})
 		});

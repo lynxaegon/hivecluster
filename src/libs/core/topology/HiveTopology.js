@@ -1,26 +1,52 @@
 const debug = HiveClusterModules.debug("HiveCluster:HiveTopology");
+const InternalPeer = require("../transport/InternalPeer");
 const EventEmitter = require('events');
 const networkSeen = Symbol('networkSeen');
+const internalNode = Symbol('internalNode');
 const Node = require('./Node');
 const util = require("util");
 const extractPath = require("../../utils/graphlib.extractPath");
 const graphlib = require("graphlib");
 
+// TODO: rethink how the graph changes are propagated in the network
+// TODO: the "visited" version, kills my mac with 8 nodes :)
+
 module.exports = HiveClusterModules.BaseClass.extend({
 	init: function (options) {
 		this.events = new EventEmitter();
-
 		this.networkGraph = new graphlib.Graph({
 			directed: false
 		});
 		this.peers = new Map();
+
+		this[internalNode] = null;
+		if(options.systemNetwork) {
+			this[internalNode] = this.get(HiveCluster.id);
+			this[internalNode].setPeer(new InternalPeer({
+				id: HiveCluster.id
+			}), 0);
+			this[internalNode].peer.on('message', msg => this.handleMessage(this[internalNode].peer, msg));
+		}
+		this.started = false;
 
 		// setInterval(() => {
 		// 	const routingTable = this.getRoutingTable();
 		// 	console.log("============== ROUTING TABLE ============");
 		// 	console.log(util.inspect(routingTable, {showHidden: false, depth: null}));
 		// 	console.log("============== ROUTING TABLE ============");
+		// 	console.log("============== NODES CONNECTED ============");
+		// 	console.log(util.inspect(this.peers.keys(), {showHidden: false, depth: null}));
+		// 	console.log("============== NODES CONNECTED ============");
 		// }, 1000);
+	},
+	start: function(){
+		if(this.started)
+			return;
+		this.started = true;
+
+		if(this[internalNode]) {
+			this.events.emit("available", this[internalNode]);
+		}
 	},
 	on: function (event, handler) {
 		this.events.on(event, handler);
@@ -68,9 +94,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			return;
 
 		console.log("============== New Routing Table ("+ peer.id +") ================");
-		// console.log("Routing Table");
-		// console.log(data.source, util.inspect(data, {showHidden: false, depth: null}));
-		// console.log("Routing Table END");
+		console.log("Routing Table");
+		console.log(data.source, util.inspect(data, {showHidden: false, depth: null}));
+		console.log("Routing Table END");
 		let requiresBroadcast = false;
 
 		const available = new Set();
@@ -78,12 +104,16 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		available.add(HiveCluster.id);
 
 		for (const p of data.nodes) {
-			if (p.id === HiveCluster.id) {
+			if (p.id === HiveCluster.id || p.id == data.source) {
 				continue;
 			}
 
 			const node = this.get(p.id);
 			node.decodeInfo(p.info);
+
+			if(!this.networkGraph.hasEdge(data.source, p.id))
+				requiresBroadcast = true;
+
 			this.networkGraph.setEdge(data.source, p.id);
 			available.add(p.id);
 		}
@@ -97,8 +127,14 @@ module.exports = HiveClusterModules.BaseClass.extend({
 				requiresBroadcast = true;
 			}
 		}
+
 		const sinks = this.networkGraph.sinks();
 		for (const nodeID of sinks) {
+			if(nodeID == HiveCluster.id){
+				console.log("node", this.networkGraph.node(nodeID));
+				console.log("rejected removal of current node id!", HiveCluster.id);
+				continue;
+			}
 			const node = this.networkGraph.node(nodeID);
 			this.networkGraph.removeNode(nodeID);
 			// console.log("removed node:", nodeID);
@@ -130,6 +166,11 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		nodes = this.networkGraph.sinks();
 		for (const nodeID of nodes) {
+			if(nodeID == HiveCluster.id){
+				console.log("rejected removal of current node id!", HiveCluster.id);
+				continue;
+			}
+
 			const node = this.networkGraph.node(nodeID);
 			this.networkGraph.removeNode(nodeID);
 			// console.log("removed node:", nodeID, node);
@@ -172,15 +213,17 @@ module.exports = HiveClusterModules.BaseClass.extend({
 	},
 	queueBroadcast: function (peer, data) {
 		if(peer && data){
-			data.visited++;
-			if(data.visited >= this.networkGraph.nodes().length){
-				return;
-			}
-
+			console.log("peer", peer.id, data);
+			console.log("last source:", data.lastSource);
+			let sourceNeighbors = this.networkGraph.neighbors(data.lastSource);
+			sourceNeighbors.push(peer.id);
+			console.log("neighbors of " + data.lastSource, sourceNeighbors);
+			data.lastSource = HiveCluster.id;
 			for (const p of this.peers.values()) {
-				if(p.id == peer.id)
-					continue;
-				p.write('nodes', data);
+				if(sourceNeighbors.indexOf(p.id) == -1) {
+					console.log("sending update to: ", p.id);
+					p.write('nodes', data);
+				}
 			}
 			return;
 		}
@@ -197,7 +240,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			for (const peer of this.peers.values()) {
 				peer.write('nodes', {
 					nodes: routingTable,
-					visited: 1,
+					lastSource: HiveCluster.id,
 					source: HiveCluster.id
 				});
 			}
@@ -214,6 +257,10 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			return null;
 
 		for (const nodeId of neighbors) {
+			if(nodeId == HiveCluster.id) {
+				continue;
+			}
+
 			node = this.networkGraph.node(nodeId);
 			data = {
 				id: nodeId
@@ -231,8 +278,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		let nodes = this.networkGraph.nodes();
 		let paths = graphlib.alg.dijkstra(this.networkGraph, HiveCluster.id, null, (v) => this.networkGraph.nodeEdges(v));
 		for(const nodeID of nodes){
-			if(nodeID == HiveCluster.id)
+			if(nodeID == HiveCluster.id) {
 				continue;
+			}
 
 			const node = this.get(nodeID);
 			const wasReacheable = node.isReachable();
@@ -242,17 +290,20 @@ module.exports = HiveClusterModules.BaseClass.extend({
 				node.setPeer(this.peers.get(path.path[0]), path.distance);
 				if(node.peer != oldPeer){
 					if(wasReacheable) {
-						console.log("Updated", node.id, "reacheable via", node.peer.id, "(old path:"+ oldPeer.id +")");
+						// console.log("Updated", node.id, "reacheable via", node.peer.id, "(old path:"+ oldPeer.id +")");
 						this.events.emit("update", node);
 					}
 					else {
 						// console.log(node.id, "found path:", path);
 						this.events.emit("available", node);
 					}
-					// console.log("NETWORK:", util.inspect(this.networkGraph.edges(), {showHidden: false, depth: null}));
 				}
 			}
 			catch(e){
+				// This happens if there is no path to a given node via a specific peer
+				//
+				// console.log("error", "invalid target nodes", "source", HiveCluster.id, "target", nodeID, wasReacheable);
+				//
 				node.removePeer();
 				if(wasReacheable)
 					this.events.emit("update", node);

@@ -34,9 +34,8 @@ module.exports = HiveClusterModules.BaseClass.extend({
 				}
 			});
 
-			peer.on('disconnected', () => {
+			peer.on('disconnected', (reason) => {
 				const stored = this[peers].get(peer.id);
-				console.log("peer disconnected", peer.id);
 				if(stored === peer) {
 					this[peers].delete(peer.id);
 					this[events].emit('disconnected', peer);

@@ -18,9 +18,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		self[reqSymbol] = req;
 		self[resSymbol] = res;
 		self[httpResult] = {
-			_headers: {
-				"HIVE-NODE-ID": HiveCluster.id
-			},
+			_headers: {},
 			_body: [],
 			_url: qs.pathname,
 			_query: {
@@ -30,8 +28,6 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			_status: 200
 		};
 		self[endSymbol] = false;
-
-		console.log(self[httpResult]);
 	},
 	url: function(){
 		return this[httpResult]._url;

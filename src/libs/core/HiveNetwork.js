@@ -3,41 +3,75 @@ const events = Symbol("events");
 const seq = Symbol("seq");
 const _seq = Symbol("_seq");
 const Network = require("./Network");
+const graphlib = require("graphlib");
 
 module.exports = HiveClusterModules.BaseClass.extend({
 	init: function(options){
-		this.options = options;
+		this.options = Object.assign({
+			name: "unknown",
+			systemNetwork: false
+		}, options);
+
 		this.networks = [];
 		this.nodes = [];
 		this[events] = new EventEmitter();
 
-		this[seq] = () => {
-			if(!this[_seq] || this[_seq] >= 100)
-				this[_seq] = 0;
+		this.debug = HiveClusterModules.debug("HiveNetwork:" + this.options.name);
 
-			return this[_seq];
-		};
+		if(this.options.transports) {
+			for (let transport of this.options.transports) {
+				this.addTransport(transport)
+			}
+		}
+		delete this.options.transports;
+
+		// if(this.options.drawMap){
+		// 	setInterval(() => {
+		// 		let map = [];
+		// 		for(let node of this.nodes){
+		// 			map.push("\t\t" + node.getID() + " - distance: " + node.getDistance() + " - path: " + node.getPath());
+		// 		}
+		// 		console.log("Map:", map.join("\n"));
+		// 	}, 1000);
+		// }
 
 		this.timeouts = {};
 	},
-	addTransport: function(transport, fullMesh){
+	addTransport: function(transport){
 		this.networks.push(
 			new Network({
 				name: this.options.name,
-				transport: transport,
-				fullMesh: fullMesh
+				systemNetwork: this.options.systemNetwork,
+				transport: transport
 			})
 		);
+	},
+	getTopology: function(){
+		let networkTopology = new graphlib.Graph({
+			directed: false
+		});
+
+		let topology;
+		for(let network of this.networks){
+			topology = network.getTopology();
+			for(let node of topology.nodes()){
+				networkTopology.setNode(node);
+			}
+			for(let edge of topology.edges()){
+				networkTopology.setEdge(edge.v, edge.w);
+			}
+		}
+
+		return graphlib.json.write(networkTopology);
 	},
 	start: function(){
 		let promises = [];
 		for(let network of this.networks){
+			this.setup(network);
 			promises.push(
 				network.start().then((result) => {
-					this.setup(network);
-					console.log("started -> ", result, "GUID:", HiveCluster.id);
 				}).catch((result) => {
-					console.log("started catch -> ", result);
+					console.log("network error -> ", result);
 				})
 			);
 		}
@@ -50,14 +84,6 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		}
 	},
 	setup: function(network){
-		// setInterval(() => {
-		// 	console.log("============ MAP =============");
-		// 	for(let i in this.nodes) {
-		// 		console.log("  ", "id", this.nodes[i].getID(), "path", (this.nodes[i].getPath() == this.nodes[i].getID() ? "direct" : this.nodes[i].getPath()), "distance", this.nodes[i].getDistance());
-		// 	}
-		// 	console.log("=========================");
-		// }, 5000);
-
 		// HiveNode available, either directly or via a peer
 		network.on('node:available', node => {
 			console.log("node added", node.getID(), node.isDirect());
@@ -81,9 +107,10 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			if(msg.type == "hive"){
 				if(msg.data.seqr){
 					// reply package
+					msg.node.processReply(new HivePacket().deserialize(msg));
 				} else {
 					// normal package
-					this.emit(msg.data.request, msg.data.data);
+					this.emit(msg.data.req, new HivePacket().deserialize(msg));
 				}
 			} else {
 				console.log("Invalid message!", msg);
@@ -93,6 +120,8 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		network.on("_hiveNetworkEvent", (...args) => {
 			this.emit.apply(this, args);
 		});
+
+		network.setup();
 	},
 	on: function (event, handler) {
 		this[events].on(event, handler);
@@ -102,5 +131,39 @@ module.exports = HiveClusterModules.BaseClass.extend({
 	},
 	emit: function(event){
 		this[events].emit.apply(this[events], arguments);
+	},
+	send: function(payload, nodes){
+		if(HiveClusterModules.Utils.isFunction(nodes))
+			nodes = this.getNodes(nodes);
+
+		if(!nodes)
+			return;
+
+		if(!HiveClusterModules.Utils.isArray(nodes)){
+			nodes = [nodes];
+		}
+
+		for(let node of nodes){
+			node.send(payload);
+		}
+	},
+	getNodes(filterFnc){
+		if(!HiveClusterModules.Utils.isFunction(filterFnc))
+			return this.nodes;
+
+		let result = [];
+		for (let i = 0; i < this.nodes.length; i++) {
+			if (filterFnc(this.nodes[i]))
+				result.push(this.nodes[i]);
+		}
+		return result;
+	},
+	drawMap: function (){
+		let nodes = this.nodes;
+		console.log("============ MAP =============");
+		for(let i in nodes) {
+			console.log("  ", "id", nodes[i].getID(), "distance", nodes[i].getDistance(), "path", nodes[i].getPath());
+		}
+		console.log("=========================");
 	}
 });
