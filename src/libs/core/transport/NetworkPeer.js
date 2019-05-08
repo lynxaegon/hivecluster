@@ -3,20 +3,22 @@ const eos = require('end-of-stream');
 const Peer = require("./Peer");
 const ip = require('ip');
 
-module.exports = Peer.extend({
-	getAuthPackage: function(){
+module.exports = class NetworkPeer extends Peer {
+	getAuthPackage() {
 		return {
 			id: this.id,
 			address: ip.address(),
 			port: this.transport.options.port
 		}
-	},
-	processAuthPackage: function(msg){
+	}
+
+	processAuthPackage(msg) {
 		this.id = msg.id;
 		this.address = msg.address;
 		this.port = msg.port;
-	},
-	setSocket: function (socket) {
+	}
+
+	setSocket(socket) {
 		if (this.socket) {
 			// Destroy previous socket
 			this.socket.destroy();
@@ -38,26 +40,29 @@ module.exports = Peer.extend({
 			const type = data[0];
 			const payload = data[1];
 
-			if(type != "ping")
+			if (type != "ping")
 				this.debug('Incoming', type, 'with payload', payload);
 			this.events.emit(type, payload);
 		});
 
 		decoder.on('error', err => this.debug('Error from decoder', err));
 		pipe.on('error', err => this.debug('Error from pipe', err));
-	},
-	handleDisconnect: function (err) {
+	}
+
+	handleDisconnect(err) {
 		this.socket = null;
-		this._super.apply(this, arguments);
-	},
-	requestDisconnect: function (err) {
+		super.handleDisconnect(err);
+	}
+
+	requestDisconnect(err) {
 		if (this.socket) {
 			this.socket.destroy();
 		}
-		this._super.apply(this, arguments);
-	},
+		super.requestDisconnect(err);
+	}
+
 	disconnect() {
-		this._super.apply(this, arguments);
+		super.disconnect();
 
 		if (this.socket) {
 			this.write('bye');
@@ -65,14 +70,15 @@ module.exports = Peer.extend({
 		} else {
 			this.handleDisconnect();
 		}
-	},
+	}
+
 	write(type, payload) {
 		if (!this.socket) {
 			this.debug('No socket but tried to send', type, 'with data', payload);
 			return;
 		}
 
-		if(type != "ping")
+		if (type != "ping")
 			this.debug('Sending', type, 'with data', payload);
 		const data = msgpack.encode([String(type), payload]);
 		// console.log("Sending data length:", data.length);
@@ -87,4 +93,4 @@ module.exports = Peer.extend({
 			console.log('Could not write;', err);
 		}
 	}
-});
+};

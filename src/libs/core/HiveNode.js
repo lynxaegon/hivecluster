@@ -4,14 +4,14 @@ const seq = Symbol('seq');
 const _seq = Symbol('_seq');
 const packets = Symbol('packets');
 
-module.exports = HiveClusterModules.BaseClass.extendObject(EventEmitter,{
-	init: function(other, networkName){
-		this._super.call(this);
+module.exports = class HiveNode extends EventEmitter {
+	constructor(other, networkName) {
+		super();
 		this.networkName = networkName;
 		this[wrapped] = other;
 
 		this[seq] = () => {
-			if(!this[_seq] || this[_seq] >= 100)
+			if (!this[_seq] || this[_seq] >= 100)
 				this[_seq] = 0;
 
 			this[_seq]++;
@@ -20,45 +20,54 @@ module.exports = HiveClusterModules.BaseClass.extendObject(EventEmitter,{
 		};
 
 		this[packets] = {};
-	},
-	getID: function(){
+	}
+
+	getID() {
 		return this[wrapped].id;
-	},
-	send: function(payload){
+	}
+
+	send(payload) {
 		this[wrapped].send("hive", payload.serialize(this[seq]()));
-	},
-	processReply: function(packet){
-		if(this[packets]["_" + packet.seq]){
+	}
+
+	processReply(packet) {
+		if (this[packets]["_" + packet.seq]) {
 			this[packets]["_" + packet.seq].onReply(packet);
 		} else {
 			console.error("Invalid reply packet. Should drop!", packet);
 		}
-	},
-	isAvailable: function(){
+	}
+
+	isAvailable() {
 		return this[wrapped].isReachable();
-	},
-	getDistance: function(){
+	}
+
+	getDistance() {
 		return this[wrapped].distance;
-	},
-	getDirectAddress: function(){
-		if(!this[wrapped].directAddress)
+	}
+
+	getDirectAddress() {
+		if (!this[wrapped].directAddress)
 			return null;
 
 		return {
 			address: this[wrapped].directAddress,
 			port: this[wrapped].directPort,
 		};
-	},
-	getPath: function(){
-		if(!this[wrapped].peer)
+	}
+
+	getPath() {
+		if (!this[wrapped].peer)
 			return null;
 
 		return this[wrapped].peer.id;
-	},
-	isDirect: function(){
+	}
+
+	isDirect() {
 		return this[wrapped].direct;
-	},
-	disconnect: function(){
+	}
+
+	disconnect() {
 		return this[wrapped].peer.requestDisconnect();
 	}
-});
+};

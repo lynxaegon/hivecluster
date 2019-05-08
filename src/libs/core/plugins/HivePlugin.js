@@ -1,6 +1,6 @@
 const pluginManager = Symbol("pluginManager");
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function(pluginMgr, hiveNetwork, options){
+module.exports = class HivePlugin {
+	constructor(pluginMgr, hiveNetwork, options) {
 		this[pluginManager] = pluginMgr;
 		this.hiveNetwork = hiveNetwork;
 		this.options = options;
@@ -8,14 +8,17 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this.__loadPromise = new Promise((resolve, reject) => {
 			this.__finishedLoading = resolve;
 		});
-	},
-	pluginLoad: function(){
+	}
+
+	pluginLoad() {
 		return this.__loadPromise;
-	},
-	getPlugin: function(name){
+	}
+
+	getPlugin(name) {
 		return this[pluginManager].getPlugin(name);
-	},
-	pluginLoaded: function(){
+	}
+
+	pluginLoaded() {
 		this.__finishedLoading();
 	}
-});{}
+};

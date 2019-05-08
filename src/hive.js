@@ -6,10 +6,8 @@ global.HiveClusterModules = {};
 global.HiveCluster = {};
 const modules = {
 	debug: "debug",
-	BaseClass: "libs/core/BaseClass",
 	Utils: "libs/utils/utils",
 	HiveNetwork: "libs/core/HiveNetwork",
-	HivePlugin: "libs/core/plugins/HivePlugin",
 	TCPTransport: "libs/tcp/TCPTransport",
 	WSTransport: "libs/ws/WSTransport",
 	HTTPTransport: "libs/http/HTTPTransport",

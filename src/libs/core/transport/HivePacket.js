@@ -1,32 +1,37 @@
 const data = Symbol("data");
 const request = Symbol("request");
 const seq = Symbol("seq");
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function(){
+module.exports = class HivePacket {
+	constructor() {
 		this[request] = null;
 		this[data] = {};
 		this[seq] = 0;
 
 		this.replyFnc = false;
 		this.replyFailFnc = false;
-	},
-	setRequest: function(req){
+	}
+
+	setRequest(req) {
 		this[request] = req;
 		return this;
-	},
-	setData: function(pkg){
+	}
+
+	setData(pkg) {
 		this[data] = pkg;
 		return this;
-	},
-	onReply: function(replyFnc){
+	}
+
+	onReply(replyFnc) {
 		this.replyFnc = replyFnc;
 		return this;
-	},
-	onReplyFail: function(replyFailFnc){
+	}
+
+	onReplyFail(replyFailFnc) {
 		this.replyFailFnc = replyFailFnc;
 		return this;
-	},
-	serialize: function(seq){
+	}
+
+	serialize(seq) {
 		this[seq] = seq;
 		let packet = {
 			req: this[request],
@@ -34,7 +39,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			seq: this[seq]
 		};
 
-		if(this[seq] < 0){
+		if (this[seq] < 0) {
 			// reply packet
 			delete packet.req;
 			delete packet.seq;
@@ -42,8 +47,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		}
 
 		return packet;
-	},
-	deserialize: function(packet){
+	}
+
+	deserialize(packet) {
 		return {
 			seq: packet.data.seq || packet.data.seqr,
 			data: packet.data.data,
@@ -53,4 +59,4 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			}
 		};
 	}
-});
+};

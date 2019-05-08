@@ -1,7 +1,7 @@
-const Peer  = require("./Peer");
+const Peer = require("./Peer");
 
-module.exports = Peer.extend({
-	write: function(type, payload){
+module.exports = class InternalPeer extends Peer {
+	write(type, payload) {
 		this.events.emit(type, payload);
 	}
-});
+};

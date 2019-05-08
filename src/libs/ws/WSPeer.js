@@ -6,15 +6,16 @@ const msgpackCodec = msgpack.createCodec({
 	preset: true
 });
 
-module.exports = Peer.extend({
-	init: function(transport, socket){
-		this._super.call(this, transport);
+module.exports = class WSPeer extends Peer{
+	constructor(transport, socket){
+		super(transport);
 
 		if(socket) {
 			this.setSocket(socket);
 		}
-	},
-	setSocket: function (socket) {
+	}
+
+	setSocket(socket) {
 		this.socket = socket;
 
 		socket.addEventListener('message', event => {
@@ -26,18 +27,23 @@ module.exports = Peer.extend({
 		socket.on('close', () => this.handleDisconnect());
 
 		this.auth();
-	},
-	requestDisconnect: function() {
-		this.socket.close();
-	},
-	disconnect: function() {
-		this._super.apply(this, arguments);
+	}
+
+	requestDisconnect(err) {
+		super.requestDisconnect(err);
 
 		this.socket.close();
-	},
-	write: function(type, payload) {
+	}
+
+	disconnect() {
+		super.disconnect();
+
+		this.socket.close();
+	}
+
+	write(type, payload) {
 		this.debug('Sending', type, 'with data', payload);
 		const data = msgpack.encode([ String(type), payload ], { codec: msgpackCodec });
 		this.socket.send(data);
 	}
-});
+};

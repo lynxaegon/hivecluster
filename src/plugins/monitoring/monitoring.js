@@ -1,29 +1,31 @@
 const fs = require('fs');
+const HivePlugin = require('libs/core/plugins/HivePlugin');
 
-module.exports = HiveClusterModules.HivePlugin.extend({
-	init: function(){
-		this._super.apply(this, arguments);
+module.exports = class MonitoringPlugin extends HivePlugin {
+	constructor(pluginMgr, hiveNetwork, options) {
+		super(pluginMgr, hiveNetwork, options);
 		this.router = this.getPlugin("httpRouter");
 
 		this.staticFiles = {};
 
 		this.setup();
 		this.pluginLoaded();
-	},
-	setup: function(){
+	}
+
+	setup() {
 		let list = [
 			"static/cytoscape.min.js",
 			"static/cytoscape-avsdf.js",
 			"static/index.html",
 		];
 		let baseName;
-		for(let item of list){
+		for (let item of list) {
 			baseName = item.split("/");
 			baseName = baseName[baseName.length - 1];
 			this.staticFiles[baseName] = fs.readFileSync(__dirname + "/" + item, 'utf8');
 		}
 
-		for(let file in this.staticFiles){
+		for (let file in this.staticFiles) {
 			this.router.on("/" + file, (httpPeer) => {
 				httpPeer.header("content-type", "application/javascript; charset=utf-8");
 				httpPeer.body(this.staticFiles[file]);
@@ -40,4 +42,4 @@ module.exports = HiveClusterModules.HivePlugin.extend({
 			httpPeer.end();
 		});
 	}
-});
+};

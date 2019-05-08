@@ -8,9 +8,9 @@ const setupPeer = Symbol('setupPeer');
 const stoppables = Symbol('stoppables');
 const readiness = Symbol('readiness');
 
-module.exports = AbstractTransport.extend({
-	init: function(options){
-		this._super.call(this, 'tcp');
+module.exports = class TCPTransport extends AbstractTransport {
+	constructor(options) {
+		super('tcp');
 
 		this.options = Object.assign({
 			port: 5000
@@ -29,10 +29,11 @@ module.exports = AbstractTransport.extend({
 		};
 
 		this[readiness] = null;
-	},
-	start: function(options){
-		return this._super.apply(this, arguments).then(started => {
-			if(!started)
+	}
+
+	start(options) {
+		return super.start(options).then(started => {
+			if (!started)
 				return false;
 
 			return new Promise((resolve) => {
@@ -54,35 +55,37 @@ module.exports = AbstractTransport.extend({
 				});
 
 
-				if(this.options.discovery){
+				if (this.options.discovery) {
 					this.options.discovery.start(this);
 				}
 			});
 		});
-	},
-	stop: function(){
-		return this._super.apply(this, arguments).then(stopped => {
-			if(!stopped)
+	}
+
+	stop() {
+		return super.stop().then(stopped => {
+			if (!stopped)
 				return false;
 
 			return Promise.all(
 				this[stoppables].map(item => Promise.resolve(item.stop()))
 			);
 		})
-	},
-	onDiscover: function(peers){
+	}
+
+	onDiscover(peers) {
 		let nodes = [];
 		let readyNodes = 0;
-		if(peers !== null) {
+		if (peers !== null) {
 			for (let peer of peers) {
 				nodes.push(
 					this.addPeer(peer.address, peer.port)
 				);
 			}
-			for(let node of nodes){
+			for (let node of nodes) {
 				node.on("connected", () => {
 					readyNodes++;
-					if(readyNodes == nodes.length)
+					if (readyNodes == nodes.length)
 						this[readiness]();
 				});
 			}
@@ -90,9 +93,10 @@ module.exports = AbstractTransport.extend({
 		else {
 			this[readiness]();
 		}
-	},
-	addPeer: function(address, port){
-		if(this.started){
+	}
+
+	addPeer(address, port) {
+		if (this.started) {
 			return this[setupPeer]({
 				address: address,
 				port: port
@@ -100,4 +104,4 @@ module.exports = AbstractTransport.extend({
 		}
 		return null;
 	}
-});
+};

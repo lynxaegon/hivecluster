@@ -10,8 +10,8 @@ const url = require('url');
 // https://www.npmjs.com/package/formidable
 //////////////////////////////////////////////////////////////
 
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function(req, res){
+module.exports = class HTTPPeer {
+	constructor(req, res) {
 		let self = this;
 		let qs = url.parse(req.url, true);
 
@@ -28,42 +28,48 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			_status: 200
 		};
 		self[endSymbol] = false;
-	},
-	url: function(){
+	}
+
+	url() {
 		return this[httpResult]._url;
-	},
-	query: function(){
+	}
+
+	query() {
 		return this[httpResult]._query;
-	},
-	status: function(code){
-		if(this[endSymbol]) {
+	}
+
+	status(code) {
+		if (this[endSymbol]) {
 			debug("Connection already ended!");
 			return this;
 		}
 
 		this[httpResult]._status = code;
 		return this;
-	},
-	header: function(name, body){
-		if(this[endSymbol]) {
+	}
+
+	header(name, body) {
+		if (this[endSymbol]) {
 			debug("Connection already ended!");
 			return this;
 		}
 
 		this[httpResult]._headers[name] = body;
 		return this;
-	},
-	body: function(chunk){
-		if(this[endSymbol]) {
+	}
+
+	body(chunk) {
+		if (this[endSymbol]) {
 			debug("Connection already ended!");
 			return this;
 		}
 
 		this[httpResult]._body.push(chunk);
 		return this;
-	},
-	end: function(){
-		if(this[endSymbol]) {
+	}
+
+	end() {
+		if (this[endSymbol]) {
 			debug("Connection already ended!");
 			return this;
 		}
@@ -71,13 +77,13 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this[endSymbol] = true;
 		this[resSymbol].writeHead(this[httpResult]._status, this[httpResult]._headers);
 
-		if(this[httpResult]._body.length > 0)
-			for(let i in this[httpResult]._body){
-				if(!this[httpResult]._body.hasOwnProperty(i))
+		if (this[httpResult]._body.length > 0)
+			for (let i in this[httpResult]._body) {
+				if (!this[httpResult]._body.hasOwnProperty(i))
 					continue;
 				this[resSymbol].write(this[httpResult]._body[i]);
 			}
 
 		this[resSymbol].end();
 	}
-});
+};

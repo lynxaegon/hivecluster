@@ -5,8 +5,8 @@ const _seq = Symbol("_seq");
 const Network = require("./Network");
 const graphlib = require("graphlib");
 
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function(options){
+module.exports = class HiveNetwork {
+	constructor(options) {
 		this.options = Object.assign({
 			name: "unknown",
 			systemNetwork: false
@@ -18,7 +18,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		this.debug = HiveClusterModules.debug("HiveNetwork:" + this.options.name);
 
-		if(this.options.transports) {
+		if (this.options.transports) {
 			for (let transport of this.options.transports) {
 				this.addTransport(transport)
 			}
@@ -36,8 +36,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		// }
 
 		this.timeouts = {};
-	},
-	addTransport: function(transport){
+	}
+
+	addTransport(transport) {
 		this.networks.push(
 			new Network({
 				name: this.options.name,
@@ -45,28 +46,30 @@ module.exports = HiveClusterModules.BaseClass.extend({
 				transport: transport
 			})
 		);
-	},
-	getTopology: function(){
+	}
+
+	getTopology() {
 		let networkTopology = new graphlib.Graph({
 			directed: false
 		});
 
 		let topology;
-		for(let network of this.networks){
+		for (let network of this.networks) {
 			topology = network.getTopology();
-			for(let node of topology.nodes()){
+			for (let node of topology.nodes()) {
 				networkTopology.setNode(node);
 			}
-			for(let edge of topology.edges()){
+			for (let edge of topology.edges()) {
 				networkTopology.setEdge(edge.v, edge.w);
 			}
 		}
 
 		return graphlib.json.write(networkTopology);
-	},
-	start: function(){
+	}
+
+	start() {
 		let promises = [];
-		for(let network of this.networks){
+		for (let network of this.networks) {
 			this.setup(network);
 			promises.push(
 				network.start().then((result) => {
@@ -77,13 +80,15 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		}
 
 		return Promise.all(promises);
-	},
-	stop: function(){
-		for(let network of this.networks){
+	}
+
+	stop() {
+		for (let network of this.networks) {
 			network.stop();
 		}
-	},
-	setup: function(network){
+	}
+
+	setup(network) {
 		// HiveNode available, either directly or via a peer
 		network.on('node:available', node => {
 			console.log("node added", node.getID(), node.isDirect());
@@ -104,8 +109,8 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		// HiveNode message handler
 		network.on("message", (msg) => {
-			if(msg.type == "hive"){
-				if(msg.data.seqr){
+			if (msg.type == "hive") {
+				if (msg.data.seqr) {
 					// reply package
 					msg.node.processReply(new HivePacket().deserialize(msg));
 				} else {
@@ -122,33 +127,38 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		});
 
 		network.setup();
-	},
-	on: function (event, handler) {
+	}
+
+	on(event, handler) {
 		this[events].on(event, handler);
-	},
-	off: function (event, handler) {
+	}
+
+	off(event, handler) {
 		this[events].removeListener(event, handler);
-	},
-	emit: function(event){
+	}
+
+	emit(event) {
 		this[events].emit.apply(this[events], arguments);
-	},
-	send: function(payload, nodes){
-		if(HiveClusterModules.Utils.isFunction(nodes))
+	}
+
+	send(payload, nodes) {
+		if (HiveClusterModules.Utils.isFunction(nodes))
 			nodes = this.getNodes(nodes);
 
-		if(!nodes)
+		if (!nodes)
 			return;
 
-		if(!HiveClusterModules.Utils.isArray(nodes)){
+		if (!HiveClusterModules.Utils.isArray(nodes)) {
 			nodes = [nodes];
 		}
 
-		for(let node of nodes){
+		for (let node of nodes) {
 			node.send(payload);
 		}
-	},
-	getNodes(filterFnc){
-		if(!HiveClusterModules.Utils.isFunction(filterFnc))
+	}
+
+	getNodes(filterFnc) {
+		if (!HiveClusterModules.Utils.isFunction(filterFnc))
 			return this.nodes;
 
 		let result = [];
@@ -157,13 +167,14 @@ module.exports = HiveClusterModules.BaseClass.extend({
 				result.push(this.nodes[i]);
 		}
 		return result;
-	},
-	drawMap: function (){
+	}
+
+	drawMap() {
 		let nodes = this.nodes;
 		console.log("============ MAP =============");
-		for(let i in nodes) {
+		for (let i in nodes) {
 			console.log("  ", "id", nodes[i].getID(), "distance", nodes[i].getDistance(), "path", nodes[i].getPath());
 		}
 		console.log("=========================");
 	}
-});
+};

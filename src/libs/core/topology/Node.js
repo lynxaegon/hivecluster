@@ -1,45 +1,52 @@
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function (id) {
+module.exports = class Node {
+	constructor(id) {
 		this.id = id;
 		this.directAddress = null;
 		this.directPort = null;
-	},
-	forward: function (source, message) {
+	}
+
+	forward(source, message) {
 		if (!this.peer)
 			return;
 
 		this.peer.send([source, this.id, message]);
-	},
+	}
+
 	send(type, data) {
 		console.log("Send", arguments);
 		if (!this.peer)
 			return;
 
 		this.peer.send([HiveCluster.id, this.id, {type, data}]);
-	},
-	setPeer: function(peer, distance){
+	}
+
+	setPeer(peer, distance) {
 		this.peer = peer;
 		this.distance = distance;
 		this.direct = this.distance == 0;
-	},
-	encodeInfo: function(){
+	}
+
+	encodeInfo() {
 		return {
 			address: this.peer.address,
 			port: this.peer.port
 		};
-	},
-	decodeInfo: function(info){
+	}
+
+	decodeInfo(info) {
 		if (info) {
 			this.directAddress = info.address;
 			this.directPort = info.port;
 		}
-	},
-	isReachable: function(){
+	}
+
+	isReachable() {
 		return !!this.peer
-	},
-	removePeer: function(){
+	}
+
+	removePeer() {
 		this.peer = null;
 		this.direct = false;
 		this.distance = -1;
 	}
-});
+};

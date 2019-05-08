@@ -9,9 +9,9 @@ const directConnections = Symbol("directConnections");
 
 // TODO: Multiple transports are supported, but some functionality doesn't work
 // TODO: (ex: FullMesh works only for the first transport)
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function(options){
-		if(!options.name)
+module.exports = class Network {
+	constructor(options) {
+		if (!options.name)
 			throw new Error('Network name is required');
 
 		this.debug = HiveClusterModules.debug("HiveCluster");
@@ -36,7 +36,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		topology.on('update', n => {
 			const node = nodes.get(n.id);
-			if(!node)
+			if (!node)
 				return;
 
 			this[events].emit('node:update', node);
@@ -46,7 +46,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		topology.on('unavailable', n => {
 			const node = nodes.get(n.id);
-			if(!node)
+			if (!node)
 				return;
 
 			nodes.delete(n.id);
@@ -69,16 +69,16 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		// TODO: enable direct connections
 		this[directConnections] = (transport) => {
-			if(!options.systemNetwork)
+			if (!options.systemNetwork)
 				return;
 
 			clearTimeout(this.directConnectionTimeout);
 			this.directConnectionTimeout = setTimeout(() => {
 				let socket;
-				for(let node of this[nodesSymbol].values()){
-					if(!node.isDirect()){
+				for (let node of this[nodesSymbol].values()) {
+					if (!node.isDirect()) {
 						socket = node.getDirectAddress();
-						if(socket !== null) {
+						if (socket !== null) {
 							console.log("connecting directly", socket.address, socket.port);
 							transport.addPeer(socket.address, socket.port);
 						}
@@ -88,19 +88,23 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		};
 
 		this.addTransport(options.transport);
-	},
-	getTopology: function (){
+	}
+
+	getTopology() {
 		return this[topologySymbol].networkGraph;
-	},
-	on: function(event, handler){
+	}
+
+	on(event, handler) {
 		this[events].on(event, handler);
 		return this;
-	},
-	off: function(event, handler){
+	}
+
+	off(event, handler) {
 		this[events].removeListener(event, handler);
 		return this;
-	},
-	addTransport: function(transport) {
+	}
+
+	addTransport(transport) {
 		this.transports.push(transport);
 
 		transport.on('connected', peer => this[topologySymbol].addPeer(peer));
@@ -108,15 +112,16 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			this[events].emit.call(this[events], "_hiveNetworkEvent", ...args);
 		});
 
-		if(this.started) {
+		if (this.started) {
 			transport.start({
 				id: HiveCluster.id,
 				name: this.name
 			});
 		}
-	},
-	start: function() {
-		if(this.started)
+	}
+
+	start() {
+		if (this.started)
 			return Promise.resolve(false);
 
 		this.debug('About to join network as ' + HiveCluster.id);
@@ -135,9 +140,10 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			this.started = false;
 			throw err;
 		});
-	},
-	stop: function(){
-		if(	!this.started)
+	}
+
+	stop() {
+		if (!this.started)
 			return Promise.resolve(false);
 
 		return Promise.all(
@@ -146,8 +152,9 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			this.started = false;
 			return true;
 		});
-	},
-	setup: function(){
+	}
+
+	setup() {
 		this[topologySymbol].start();
 	}
-});
+};

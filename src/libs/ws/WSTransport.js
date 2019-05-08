@@ -3,17 +3,18 @@ const AbstractTransport = require("../core/transport/AbstractTransport");
 const addPeer = AbstractTransport.addPeer;
 const WSPeer = require('./WSPeer');
 
-module.exports = AbstractTransport.extend({
-	init: function(options) {
-		this._super.call(this, 'ws');
+module.exports = class WSTransport extends AbstractTransport {
+	constructor(options) {
+		super('ws');
 
 		this.options = Object.assign({
 			port: 3000
 		}, options);
-	},
-	start: function() {
-		return this._super.apply(this, arguments).then(started => {
-			if(!started)
+	}
+
+	start(options) {
+		return super.start(options).then(started => {
+			if (!started)
 				return false;
 
 			return new Promise((resolve, reject) => {
@@ -27,7 +28,7 @@ module.exports = AbstractTransport.extend({
 					this.debug('Ignoring error:', err);
 				});
 
-				if(this.options.server) {
+				if (this.options.server) {
 					resolve(true);
 				} else {
 					this.ws.on('listening', () => resolve(true));
@@ -35,4 +36,4 @@ module.exports = AbstractTransport.extend({
 			});
 		});
 	}
-});
+};

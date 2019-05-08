@@ -4,8 +4,8 @@ const FailureDetector = require('adaptive-accrual-failure-detector');
 const pingInterval = 5000;
 const pingCheckInterval = 1000;
 
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function(transport){
+module.exports = class Peer {
+	constructor(transport) {
 		this.transport = transport;
 		this.id = transport.id;
 		const ns = transport.debug ? transport.debug.namespace + ":peer" : "HiveCluster:peer";
@@ -21,7 +21,7 @@ module.exports = HiveClusterModules.BaseClass.extend({
 			this.processAuthPackage(msg);
 
 			this.debug = HiveClusterModules.debug(ns + ':' + msg.id);
-			if(this.timeouts.auth){
+			if (this.timeouts.auth) {
 				clearTimeout(this.timeouts.auth);
 			}
 
@@ -36,76 +36,87 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 		// handle pings
 		this.on('ping', () => {
-			if(!this.connected){
+			if (!this.connected) {
 				this.connected = true;
 				this.events.emit('connected');
 			}
 
 			this.failureDetector.registerHeartbeat();
 		});
-	},
+	}
+
 	on(event, handler) {
 		this.events.on(event, handler);
-	},
+	}
+
 	off(event, handler) {
 		this.events.on(event, handler);
-	},
-	getAuthPackage: function(){
+	}
+
+	getAuthPackage() {
 		return {
 			id: this.id
 		}
-	},
-	processAuthPackage: function(msg){
+	}
+
+	processAuthPackage(msg) {
 		this.id = msg.id;
-	},
-	auth: function(){
+	}
+
+	auth() {
 		this.write('auth', this.getAuthPackage());
 
-		if(this.timeouts.auth){
+		if (this.timeouts.auth) {
 			clearTimeout(this.timeouts.auth);
 		}
 
 		this.timeouts.auth = setTimeout(() =>
-			this.requestDisconnect(new Error("Timeout during auth")),
- 		5000);
-	},
+				this.requestDisconnect(new Error("Timeout during auth")),
+			5000);
+	}
+
 	write(type, payload) {
 		throw new Error('write(type, payload) must be implemented');
-	},
+	}
+
 	send(payload) {
 		this.write('message', payload);
-	},
+	}
+
 	requestDisconnect(err) {
-		if(typeof err !== 'undefined') {
+		if (typeof err !== 'undefined') {
 			this.debug("Requested disconnect via error:", err);
 		}
-	},
-	handleDisconnect: function(err){
-		if(typeof err !== 'undefined') {
+	}
+
+	handleDisconnect(err) {
+		if (typeof err !== 'undefined') {
 			this.debug('Disconnected via an error:', err);
 		} else {
 			this.debug('Disconnected gracefully');
 		}
 
-		for(let i in this.timeouts){
+		for (let i in this.timeouts) {
 			clearTimeout(this.timeouts[i])
 		}
 
-		for(let i in this.intervals){
+		for (let i in this.intervals) {
 			clearInterval(this.intervals[i])
 		}
 
 		this.connected = false;
 		this.events.emit('disconnected', err);
-	},
+	}
+
 	disconnect() {
 		this.debug('Requesting disconnect from peer');
-	},
-	checkFailure: function(){
+	}
+
+	checkFailure() {
 		let result = this.failureDetector.checkFailure();
 		// console.log("CheckFailure", this.id, result);
-		if(result) {
+		if (result) {
 			this.requestDisconnect("Marked as failure");
 		}
 	}
-});
+};

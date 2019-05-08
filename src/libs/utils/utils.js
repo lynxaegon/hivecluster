@@ -1,40 +1,44 @@
 const uuidv4 = require("uuid/v4");
-module.exports = new (HiveClusterModules.BaseClass.extend({
-	TIME_UNIT: {
-		MILLISECONDS: "MILLISECONDS",
-		MICROSECONDS: "MICROSECONDS",
-		NANOSECONDS: "NANOSECONDS"
-	},
-	noop: function(){
+const TIME_UNIT = {
+	MILLISECONDS: "MILLISECONDS",
+	MICROSECONDS: "MICROSECONDS",
+	NANOSECONDS: "NANOSECONDS"
+};
 
-	},
-	now: function(unit){
+class Utils {
+	noop() {
+
+	}
+
+	now(unit) {
 		const hrTime = process.hrtime();
 		switch (unit) {
-			case this.TIME_UNIT.MILLISECONDS:
+			case TIME_UNIT.MILLISECONDS:
 				return hrTime[0] * 1000 + hrTime[1] / 1000000;
-			case this.TIME_UNIT.MICROSECONDS:
+			case TIME_UNIT.MICROSECONDS:
 				return hrTime[0] * 1000000 + hrTime[1] / 1000;
-			case this.TIME_UNIT.NANOSECONDS:
+			case TIME_UNIT.NANOSECONDS:
 			default:
 				return hrTime[0] * 1000000000 + hrTime[1];
 		}
-	},
-	getMemoryUsage: function(){
+	}
+
+	getMemoryUsage() {
 		// returns heapUsed in MB
 		const used = process.memoryUsage();
-		var tmp = [];
-		for (var key in used) {
+		let tmp = [];
+		for (let key in used) {
 			tmp.push(key, Math.round(used[key] / 1024 / 1024 * 100) / 100, "MB");
 		}
 		return tmp.join(" ");
-	},
-	extend: function() {
-		var extended = {};
+	}
 
-		for(var key in arguments) {
-			var argument = arguments[key];
-			for (var prop in argument) {
+	extend() {
+		let extended = {};
+
+		for (let key in arguments) {
+			let argument = arguments[key];
+			for (let prop in argument) {
 				if (Object.prototype.hasOwnProperty.call(argument, prop)) {
 					extended[prop] = argument[prop];
 				}
@@ -42,39 +46,40 @@ module.exports = new (HiveClusterModules.BaseClass.extend({
 		}
 
 		return extended;
-	},
-	isFunction: function(obj) {
+	}
+
+	isFunction(obj) {
 		return !!(obj && obj.constructor && obj.call && obj.apply);
-	},
-	uuidv4: function(){
+	}
+
+	uuidv4() {
 		return uuidv4();
-	},
-	getRandomInt: function(min, max) {
+	}
+
+	getRandomInt(min, max) {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
-	},
-	monitorPerformance: function(){
+	}
+
+	monitorPerformance() {
 		return {
 			TIME_UNIT: Utils.TIME_UNIT.MILLISECONDS,
 			now: Utils.now(Utils.TIME_UNIT.MILLISECONDS),
-			get: function(){
+			get: function () {
 				return Utils.now(this.TIME_UNIT) - this.now
 			}
 		}
-	},
-	// stringify: require('fast-json-stable-stringify')
-	stringify: function(){
-		return JSON.stringify.apply(this, arguments);
-	},
-	flatten: function(ob) {
-		var self = this;
-		var toReturn = {};
+	}
 
-		for (var i in ob) {
+	flatten(ob) {
+		let self = this;
+		let toReturn = {};
+
+		for (let i in ob) {
 			if (!ob.hasOwnProperty(i)) continue;
 
 			if ((typeof ob[i]) == 'object') {
-				var flatObject = self.flatten(ob[i]);
-				for (var x in flatObject) {
+				let flatObject = self.flatten(ob[i]);
+				for (let x in flatObject) {
 					if (!flatObject.hasOwnProperty(x)) continue;
 
 					toReturn[i + '.' + x] = flatObject[x];
@@ -84,17 +89,17 @@ module.exports = new (HiveClusterModules.BaseClass.extend({
 			}
 		}
 		return toReturn;
-	},
-	readFromDBCursor: function(cursor, callback){
-		return new Promise(function(resolve){
-			if(cursor.isClosed())
-			{
+	}
+
+	readFromDBCursor(cursor, callback) {
+		return new Promise(function (resolve) {
+			if (cursor.isClosed()) {
 				callback(null, null);
 				resolve();
 				return false;
 			}
-			cursor.nextObject(function(err, item){
-				if(item == null){
+			cursor.nextObject(function (err, item) {
+				if (item == null) {
 					// cursor finished
 					cursor.close();
 					callback(err, item);
@@ -104,37 +109,44 @@ module.exports = new (HiveClusterModules.BaseClass.extend({
 				Utils.readFromDBCursor(cursor, callback).then(resolve);
 			})
 		})
-	},
-	shuffleArray: function(array) {
-		for (var i = array.length - 1; i > 0; i--) {
-			var j = Math.floor(Math.random() * (i + 1));
-			var temp = array[i];
+	}
+
+	shuffleArray(array) {
+		for (let i = array.length - 1; i > 0; i--) {
+			let j = Math.floor(Math.random() * (i + 1));
+			let temp = array[i];
 			array[i] = array[j];
 			array[j] = temp;
 		}
-	},
-	isArray: function(a) {
+	}
+
+	isArray(a) {
 		return (!!a) && (a.constructor === Array);
-	},
-	isObject: function(a) {
+	}
+
+	isObject(a) {
 		return (!!a) && (a.constructor === Object);
-	},
-	sortBy: function(fields){
+	}
+
+	sortBy(fields) {
 		return function (a, b) {
 			return fields
 			.map(function (o) {
-				var dir = 1;
+				let dir = 1;
 				if (o[0] === '-') {
 					dir = -1;
-					o=o.substring(1);
+					o = o.substring(1);
 				}
 				if (a[o] > b[o]) return dir;
 				if (a[o] < b[o]) return -(dir);
 				return 0;
 			})
-			.reduce(function firstNonZeroValue (p,n) {
+			.reduce(function firstNonZeroValue(p, n) {
 				return p ? p : n;
 			}, 0);
 		};
 	}
-}));
+}
+
+Utils.TIME_UNIT = TIME_UNIT;
+module.exports = new Utils();

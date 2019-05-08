@@ -4,8 +4,8 @@ const events = Symbol('events');
 const peers = Symbol('peers');
 const addPeer = Symbol('addPeer');
 
-module.exports = HiveClusterModules.BaseClass.extend({
-	init: function (name) {
+module.exports = class AbstractTransport {
+	constructor(name) {
 		this.name = name;
 		this[events] = new EventEmitter(this);
 		this[peers] = new Map();
@@ -13,16 +13,16 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this.started = false;
 		this.debug = HiveClusterModules.debug('HiveCluster:' + name);
 
-		this[addPeer] = function(peer){
+		this[addPeer] = function (peer) {
 			peer.on('connected', () => {
-				if(peer.id === this.id) {
+				if (peer.id === this.id) {
 					this.debug('Connected to self, requesting disconnect');
 					peer.disconnect();
 					return;
 				}
 
-				if(this[peers].has(peer.id)) {
-					if(peer.merge) {
+				if (this[peers].has(peer.id)) {
+					if (peer.merge) {
 						this[peers].get(peer.id).merge(peer);
 					} else {
 						peer.disconnect();
@@ -36,20 +36,23 @@ module.exports = HiveClusterModules.BaseClass.extend({
 
 			peer.on('disconnected', (reason) => {
 				const stored = this[peers].get(peer.id);
-				if(stored === peer) {
+				if (stored === peer) {
 					this[peers].delete(peer.id);
 					this[events].emit('disconnected', peer);
 				}
 			});
 		}
-	},
-	on: function (event, handler) {
+	}
+
+	on(event, handler) {
 		this[events].on(event, handler);
-	},
-	off: function (event, handler) {
+	}
+
+	off(event, handler) {
 		this[events].removeListener(event, handler);
-	},
-	start: function (options) {
+	}
+
+	start(options) {
 		if (this.started) {
 			return Promise.resolve(false);
 		}
@@ -59,20 +62,21 @@ module.exports = HiveClusterModules.BaseClass.extend({
 		this.id = options.id;
 
 		return Promise.resolve(true);
-	},
-	stop: function(){
-		if(!this.started) {
+	}
+
+	stop() {
+		if (!this.started) {
 			return Promise.resolve(false);
 		}
 
-		for(const peer of this[peers].values()) {
+		for (const peer of this[peers].values()) {
 			peer.disconnect();
 		}
 
 		this.started = false;
 		return Promise.resolve(true);
 	}
-});
+};
 
 module.exports.addPeer = addPeer;
 module.exports.events = events;

@@ -1,14 +1,16 @@
-const NetworkPeer  = require("../core/transport/NetworkPeer");
+const NetworkPeer = require("../core/transport/NetworkPeer");
 const net = require("net");
-module.exports = NetworkPeer.extend({
-	merge: function(peer){
+module.exports = class TCPPeer extends NetworkPeer {
+	merge(peer) {
 		peer.requestDisconnect("Deduplication!");
-	},
-	setConnectionString: function(address, port){
+	}
+
+	setConnectionString(address, port) {
 		this.address = address;
 		this.port = port;
-	},
-	tryConnect: function(){
+	}
+
+	tryConnect() {
 		const client = net.connect(this.port, this.address);
 		// client.setKeepAlive(true);
 		client.on('connect', () => {
@@ -22,7 +24,7 @@ module.exports = NetworkPeer.extend({
 		this.setSocket(client);
 
 		this.timeouts.connect = setTimeout(() =>
-			this.requestDisconnect(new Error("Timeout during tryConnect")),
-		2000);
+				this.requestDisconnect(new Error("Timeout during tryConnect")),
+			2000);
 	}
-});
+};
