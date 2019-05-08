@@ -30,11 +30,11 @@ module.exports = class HTTPPeer {
 		self[endSymbol] = false;
 	}
 
-	url() {
+	get url() {
 		return this[httpResult]._url;
 	}
 
-	query() {
+	get query() {
 		return this[httpResult]._query;
 	}
 

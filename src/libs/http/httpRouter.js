@@ -59,8 +59,8 @@ module.exports = class HTTPRouterPlugin extends HivePlugin {
 	}
 
 	processRoutes(httpPeer) {
-		if (this._routes[httpPeer.url()]) {
-			this._routes[httpPeer.url()](httpPeer);
+		if (this._routes[httpPeer.url]) {
+			this._routes[httpPeer.url](httpPeer);
 			return true;
 		}
 
@@ -68,13 +68,13 @@ module.exports = class HTTPRouterPlugin extends HivePlugin {
 			if (!this._routesRegexp.hasOwnProperty(i))
 				continue;
 
-			if (this._routesRegexp[i].path.test(httpPeer.url())) {
+			if (this._routesRegexp[i].path.test(httpPeer.url)) {
 				this._routesRegexp[i].cb(httpPeer);
 				return true;
 			}
 		}
 
-		console.log("404 sent for", httpPeer.url(), this._routes);
+		console.log("404 sent for", httpPeer.url, this._routes);
 		// return 404
 		httpPeer
 		.status(404)

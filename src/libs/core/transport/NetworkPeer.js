@@ -82,6 +82,7 @@ module.exports = class NetworkPeer extends Peer {
 			this.debug('Sending', type, 'with data', payload);
 		const data = msgpack.encode([String(type), payload]);
 		// console.log("Sending data length:", data.length);
+		// console.log("Sending data:", type, payload);
 		try {
 			HiveCluster.EventBus.emit("/debug/record", {
 				to: String(this.id),

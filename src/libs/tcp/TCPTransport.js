@@ -17,17 +17,6 @@ module.exports = class TCPTransport extends AbstractTransport {
 		}, options);
 
 		this[stoppables] = [];
-
-		this[setupPeer] = (data) => {
-			const peer = new TCPPeer(this);
-			this[addPeer](peer);
-
-			peer.setConnectionString(data.address, data.port);
-			peer.tryConnect();
-
-			return peer;
-		};
-
 		this[readiness] = null;
 	}
 
@@ -103,5 +92,15 @@ module.exports = class TCPTransport extends AbstractTransport {
 			});
 		}
 		return null;
+	}
+
+	[setupPeer](data) {
+		const peer = new TCPPeer(this);
+		this[addPeer](peer);
+
+		peer.setConnectionString(data.address, data.port);
+		peer.tryConnect();
+
+		return peer;
 	}
 };

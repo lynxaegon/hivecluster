@@ -10,15 +10,6 @@ module.exports = class HiveNode extends EventEmitter {
 		this.networkName = networkName;
 		this[wrapped] = other;
 
-		this[seq] = () => {
-			if (!this[_seq] || this[_seq] >= 100)
-				this[_seq] = 0;
-
-			this[_seq]++;
-
-			return this[_seq];
-		};
-
 		this[packets] = {};
 	}
 
@@ -56,11 +47,20 @@ module.exports = class HiveNode extends EventEmitter {
 		};
 	}
 
-	getPath() {
+	get path() {
 		if (!this[wrapped].peer)
 			return null;
 
 		return this[wrapped].peer.id;
+	}
+
+	[seq]() {
+		if (!this[_seq] || this[_seq] >= 100)
+			this[_seq] = 0;
+
+		this[_seq]++;
+
+		return this[_seq];
 	}
 
 	isDirect() {

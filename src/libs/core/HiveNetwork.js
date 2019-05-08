@@ -173,7 +173,7 @@ module.exports = class HiveNetwork {
 		let nodes = this.nodes;
 		console.log("============ MAP =============");
 		for (let i in nodes) {
-			console.log("  ", "id", nodes[i].getID(), "distance", nodes[i].getDistance(), "path", nodes[i].getPath());
+			console.log("  ", "id", nodes[i].getID(), "distance", nodes[i].getDistance(), "path", nodes[i].path);
 		}
 		console.log("=========================");
 	}

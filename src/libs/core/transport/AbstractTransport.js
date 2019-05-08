@@ -12,36 +12,6 @@ module.exports = class AbstractTransport {
 
 		this.started = false;
 		this.debug = HiveClusterModules.debug('HiveCluster:' + name);
-
-		this[addPeer] = function (peer) {
-			peer.on('connected', () => {
-				if (peer.id === this.id) {
-					this.debug('Connected to self, requesting disconnect');
-					peer.disconnect();
-					return;
-				}
-
-				if (this[peers].has(peer.id)) {
-					if (peer.merge) {
-						this[peers].get(peer.id).merge(peer);
-					} else {
-						peer.disconnect();
-					}
-				} else {
-					// New peer, connect to it
-					this[peers].set(peer.id, peer);
-					this[events].emit('connected', peer);
-				}
-			});
-
-			peer.on('disconnected', (reason) => {
-				const stored = this[peers].get(peer.id);
-				if (stored === peer) {
-					this[peers].delete(peer.id);
-					this[events].emit('disconnected', peer);
-				}
-			});
-		}
 	}
 
 	on(event, handler) {
@@ -75,6 +45,36 @@ module.exports = class AbstractTransport {
 
 		this.started = false;
 		return Promise.resolve(true);
+	}
+
+	[addPeer](peer) {
+		peer.on('connected', () => {
+			if (peer.id === this.id) {
+				this.debug('Connected to self, requesting disconnect');
+				peer.disconnect();
+				return;
+			}
+
+			if (this[peers].has(peer.id)) {
+				if (peer.merge) {
+					this[peers].get(peer.id).merge(peer);
+				} else {
+					peer.disconnect();
+				}
+			} else {
+				// New peer, connect to it
+				this[peers].set(peer.id, peer);
+				this[events].emit('connected', peer);
+			}
+		});
+
+		peer.on('disconnected', (reason) => {
+			const stored = this[peers].get(peer.id);
+			if (stored === peer) {
+				this[peers].delete(peer.id);
+				this[events].emit('disconnected', peer);
+			}
+		});
 	}
 };
 
