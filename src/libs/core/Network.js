@@ -2,7 +2,6 @@ const EventEmitter = require('events').EventEmitter;
 const events = Symbol('events');
 
 const HiveNode = require('./HiveNode');
-const HiveTopology = require('./topology/HiveTopology');
 const topologySymbol = Symbol('topology');
 const nodesSymbol = Symbol('nodes');
 const directConnections = Symbol("directConnections");
@@ -10,7 +9,7 @@ const directConnections = Symbol("directConnections");
 // TODO: Multiple transports are supported, but some functionality doesn't work
 // TODO: (ex: FullMesh works only for the first transport)
 module.exports = class Network {
-	constructor(options) {
+	constructor(hiveTopology, options) {
 		if (!options.name)
 			throw new Error('Network name is required');
 
@@ -24,7 +23,7 @@ module.exports = class Network {
 		this.transports = [];
 		this.started = false;
 
-		const topology = this[topologySymbol] = new HiveTopology(options);
+		const topology = this[topologySymbol] = hiveTopology;
 		const nodes = this[nodesSymbol] = new Map();
 		topology.on('available', n => {
 			const node = new HiveNode(n, options.name);
@@ -59,33 +58,13 @@ module.exports = class Network {
 
 			const event = {
 				node: node,
-				type: msg.type,
+				protocol: msg.protocol,
 				data: msg.data
 			};
 
 			this[events].emit('message', event);
 			node.emit('message', event);
 		});
-
-		// TODO: enable direct connections
-		this[directConnections] = (transport) => {
-			if (!options.systemNetwork)
-				return;
-
-			clearTimeout(this.directConnectionTimeout);
-			this.directConnectionTimeout = setTimeout(() => {
-				let socket;
-				for (let node of this[nodesSymbol].values()) {
-					if (!node.isDirect()) {
-						socket = node.getDirectAddress();
-						if (socket !== null) {
-							console.log("connecting directly", socket.address, socket.port);
-							transport.addPeer(socket.address, socket.port);
-						}
-					}
-				}
-			}, 1000);
-		};
 
 		this.addTransport(options.transport);
 	}
@@ -157,4 +136,23 @@ module.exports = class Network {
 	setup() {
 		this[topologySymbol].start();
 	}
+
+	[directConnections](transport) {
+		if (this[topologySymbol].type == this[topologySymbol].CLIENTS)
+			return;
+
+		clearTimeout(this.directConnectionTimeout);
+		this.directConnectionTimeout = setTimeout(() => {
+			let socket;
+			for (let node of this[nodesSymbol].values()) {
+				if (!node.isDirect()) {
+					socket = node.getDirectAddress();
+					if (socket !== null) {
+						console.log("connecting directly", socket.address, socket.port);
+						transport.addPeer(socket.address, socket.port);
+					}
+				}
+			}
+		}, 1000);
+	};
 };

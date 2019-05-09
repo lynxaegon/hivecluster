@@ -2,17 +2,10 @@ const fs = require('fs');
 const HivePlugin = require('libs/core/plugins/HivePlugin');
 
 module.exports = class MonitoringPlugin extends HivePlugin {
-	constructor(pluginMgr, hiveNetwork, options) {
-		super(pluginMgr, hiveNetwork, options);
+	setup() {
 		this.router = this.getPlugin("httpRouter");
-
 		this.staticFiles = {};
 
-		this.setup();
-		this.pluginLoaded();
-	}
-
-	setup() {
 		let list = [
 			"static/cytoscape.min.js",
 			"static/cytoscape-avsdf.js",

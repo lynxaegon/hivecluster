@@ -8,6 +8,13 @@ module.exports = class HivePlugin {
 		this.__loadPromise = new Promise((resolve, reject) => {
 			this.__finishedLoading = resolve;
 		});
+
+		this.setup();
+		this.pluginLoaded();
+	}
+
+	setup() {
+		throw new Error("method not implemented: setup()");
 	}
 
 	pluginLoad() {

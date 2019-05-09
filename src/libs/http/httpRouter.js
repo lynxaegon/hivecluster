@@ -1,17 +1,10 @@
 const HivePlugin = require('libs/core/plugins/HivePlugin');
 
 module.exports = class HTTPRouterPlugin extends HivePlugin {
-	constructor(pluginMgr, hiveNetwork, options) {
-		super(pluginMgr, hiveNetwork, options);
-
+	setup() {
 		this._routes = {};
 		this._routesRegexp = [];
 
-		this.setup();
-		this.pluginLoaded();
-	}
-
-	setup() {
 		this.hiveNetwork.on("/http", (httpPeer, req, res) => {
 			req.body = [];
 			req.on('error', (err) => {

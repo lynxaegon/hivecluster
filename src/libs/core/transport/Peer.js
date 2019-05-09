@@ -79,10 +79,6 @@ module.exports = class Peer {
 		throw new Error('write(type, payload) must be implemented');
 	}
 
-	send(payload) {
-		this.write('message', payload);
-	}
-
 	requestDisconnect(err) {
 		if (typeof err !== 'undefined') {
 			this.debug("Requested disconnect via error:", err);

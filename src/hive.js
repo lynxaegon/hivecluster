@@ -11,7 +11,7 @@ const modules = {
 	TCPTransport: "libs/tcp/TCPTransport",
 	WSTransport: "libs/ws/WSTransport",
 	HTTPTransport: "libs/http/HTTPTransport",
-	HivePluginManager: "libs/core/plugins/HivePluginManager",
+	HivePluginManager: "libs/core/plugins/HivePluginManager"
 };
 for(let moduleName in modules){
 	global.HiveClusterModules[moduleName] = require(modules[moduleName]);
@@ -27,7 +27,7 @@ HiveCluster.EventBus = new (require('events').EventEmitter)();
 
 HiveCluster.Nodes = new HiveClusterModules.HiveNetwork({
 	name: "ExoSkeleton-TestNetwork",
-	systemNetwork: true,
+	type: HiveClusterModules.HiveNetwork.TYPE.SYSTEM,
 	drawMap: true,
 	transports: [
 		new HiveClusterModules.TCPTransport({
@@ -40,9 +40,13 @@ HiveCluster.Nodes = new HiveClusterModules.HiveNetwork({
 
 HiveCluster.Clients = new HiveClusterModules.HiveNetwork({
 	name: "ExoSkeleton-TestNetwork",
+	type: HiveClusterModules.HiveNetwork.TYPE.CLIENTS,
 	transports: [
 		new HiveClusterModules.HTTPTransport({
 			port: HiveCluster.args.port - 4920 + 8000
+		}),
+		new HiveClusterModules.WSTransport({
+			port: 3000
 		})
 	]
 });
@@ -58,16 +62,16 @@ let pluginListNodes = [
 // });
 HiveCluster.Nodes.start().then(() => {
 	// Network is ready, and connected
-	// HiveCluster.Nodes.on("test", function(){
-	// 	console.log(arguments);
-	// });
-	//
-	// HiveCluster.Nodes.send(new HivePacket()
-	// 	.setRequest("test")
-	// 	.setData("haha, hello")
-	// , (node) => {
-	// 	return node.getID() == HiveCluster.id;
-	// });
+	HiveCluster.Nodes.on("test", function(){
+		console.log(arguments);
+	});
+
+	HiveCluster.Nodes.send(new HivePacket()
+		.setRequest("test")
+		.setData("haha, hello")
+	, (node) => {
+		return node.getID() == HiveCluster.id;
+	});
 	console.log("===== Loading Node network Plugins");
 	new HiveClusterModules.HivePluginManager(HiveCluster.Nodes, pluginListNodes).load().then(() => {
 		console.log("===== Finished loading Plugins");
@@ -82,6 +86,9 @@ let pluginListClients = [
 	},
 	{
 		path: "plugins/monitoring/monitoring"
+	},
+	{
+		path: "plugins/ws_echo"
 	}
 ];
 HiveCluster.Clients.start().then(() => {

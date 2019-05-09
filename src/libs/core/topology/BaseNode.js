@@ -5,19 +5,12 @@ module.exports = class Node {
 		this.directPort = null;
 	}
 
-	forward(source, message) {
+	send(payload) {
 		if (!this.peer)
 			return;
 
-		this.peer.send([source, this.id, message]);
-	}
-
-	send(type, data) {
-		console.log("Send", arguments);
-		if (!this.peer)
-			return;
-
-		this.peer.send([HiveCluster.id, this.id, {type, data}]);
+		console.log(payload);
+		this.peer.send(payload);
 	}
 
 	setPeer(peer, distance) {

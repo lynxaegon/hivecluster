@@ -19,9 +19,15 @@ module.exports = class WSPeer extends Peer{
 		this.socket = socket;
 
 		socket.addEventListener('message', event => {
-			const msg = msgpack.decode(event.data, { codec: msgpackCodec });
-			this.debug('Incoming', msg[0], 'with payload', msg[1]);
-			this.events.emit(msg[0], msg[1]);
+			try {
+				const msg = msgpack.decode(event.data, {codec: msgpackCodec});
+				if (msg[0] != "ping")
+					this.debug('Incoming', msg[0], 'with payload', msg[1]);
+				this.events.emit(msg[0], msg[1]);
+			}
+			catch(e){
+				this.requestDisconnect(e);
+			}
 		});
 
 		socket.on('close', () => this.handleDisconnect());
@@ -42,7 +48,9 @@ module.exports = class WSPeer extends Peer{
 	}
 
 	write(type, payload) {
-		this.debug('Sending', type, 'with data', payload);
+		if (type != "ping")
+			this.debug('Sending', type, 'with data', payload);
+
 		const data = msgpack.encode([ String(type), payload ], { codec: msgpackCodec });
 		this.socket.send(data);
 	}

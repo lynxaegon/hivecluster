@@ -5,11 +5,20 @@ const _seq = Symbol("_seq");
 const Network = require("./Network");
 const graphlib = require("graphlib");
 
+const HiveSystemTopology = require("libs/core/topology/HiveSystemTopology");
+const HiveClientsTopology = require("libs/core/topology/HiveClientsTopology");
+
 module.exports = class HiveNetwork {
+	static get TYPE(){
+		return {
+			SYSTEM: 1,
+			CLIENTS: 2
+		};
+	}
+
 	constructor(options) {
 		this.options = Object.assign({
-			name: "unknown",
-			systemNetwork: false
+			name: "unknown"
 		}, options);
 
 		this.networks = [];
@@ -39,13 +48,29 @@ module.exports = class HiveNetwork {
 	}
 
 	addTransport(transport) {
-		this.networks.push(
-			new Network({
-				name: this.options.name,
-				systemNetwork: this.options.systemNetwork,
-				transport: transport
-			})
-		);
+		// systemNetworks push each transport in a new network
+		// clientNetworks just adds a single network and pushes transports
+		if(this.options.type == HiveNetwork.TYPE.SYSTEM){
+			this.networks.push(
+				new Network(new HiveSystemTopology(), {
+					name: this.options.name,
+					transport: transport
+				})
+			);
+		} else if(this.options.type == HiveNetwork.TYPE.CLIENTS){
+			if(this.networks.length <= 0){
+				this.networks.push(
+					new Network(new HiveClientsTopology(), {
+						name: this.options.name,
+						transport: transport
+					})
+				);
+			} else {
+				this.networks[0].addTransport(transport);
+			}
+		} else {
+			throw new Error("Invalid HiveNetwork topology Type!");
+		}
 	}
 
 	getTopology() {
@@ -104,12 +129,12 @@ module.exports = class HiveNetwork {
 		network.on('node:unavailable', node => {
 			let idx = this.nodes.indexOf(node);
 			this.nodes.splice(idx, 1);
-			console.log("removed", node.getID(), node.isDirect());
+			console.log("node removed", node.getID(), node.isDirect());
 		});
 
 		// HiveNode message handler
 		network.on("message", (msg) => {
-			if (msg.type == "hive") {
+			if (msg.protocol == 1) {
 				if (msg.data.seqr) {
 					// reply package
 					msg.node.processReply(new HivePacket().deserialize(msg));
@@ -118,7 +143,7 @@ module.exports = class HiveNetwork {
 					this.emit(msg.data.req, new HivePacket().deserialize(msg));
 				}
 			} else {
-				console.log("Invalid message!", msg);
+				console.log("Invalid HiveProtocol!", msg);
 			}
 		});
 

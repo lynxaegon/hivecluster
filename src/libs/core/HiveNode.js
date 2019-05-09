@@ -7,6 +7,7 @@ const packets = Symbol('packets');
 module.exports = class HiveNode extends EventEmitter {
 	constructor(other, networkName) {
 		super();
+
 		this.networkName = networkName;
 		this[wrapped] = other;
 
@@ -18,7 +19,7 @@ module.exports = class HiveNode extends EventEmitter {
 	}
 
 	send(payload) {
-		this[wrapped].send("hive", payload.serialize(this[seq]()));
+		this[wrapped].send([1, payload.serialize(this[seq]())]);
 	}
 
 	processReply(packet) {
