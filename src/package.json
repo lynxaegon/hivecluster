@@ -14,6 +14,7 @@
     "end-of-stream": "^1.4.1",
     "graphlib": "github:lynxaegon/graphlib#master",
     "ip": "^1.1.5",
+    "kubernetes-client": "^7.0.1",
     "minimist": "^1.2.0",
     "msgpack-lite": "^0.1.26",
     "uuid": "^3.3.2",
