@@ -26,7 +26,7 @@ HiveCluster.id = HiveCluster.args.port + "";
 HiveCluster.id = HiveClusterModules.Utils.uuidv4();
 // if it's running in KUBE, set the ID of the POD
 if(process.env.HIVE_POD_APP) {
-	HiveCluster.id = process.env.HIVE_POD_APP;
+	HiveCluster.id = process.env.HIVE_POD_NAME;
 }
 HiveCluster.EventBus = new (require('events').EventEmitter)();
 
