@@ -229,7 +229,11 @@ module.exports = class HiveSystemTopology extends HiveTopology {
 				return;
 
 			// console.log("routing table:", routingTable);
+			let neighbors = this.networkGraph.neighbors(HiveCluster.id);
 			for (const peer of this.peers.values()) {
+				if(!neighbors.indexOf(peer.id))
+					continue;
+
 				peer.write('nodes', {
 					nodes: routingTable,
 					lastSource: HiveCluster.id,

@@ -38,6 +38,7 @@ HiveCluster.Nodes = new HiveClusterModules.HiveNetwork({
 		new HiveClusterModules.TCPTransport({
 			port: HiveCluster.args.port,
 			discovery: new (require("libs/discovery/kube-api"))
+			// discovery: new (require("libs/discovery/local"))
 		})
 	]
 });

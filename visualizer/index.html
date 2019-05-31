@@ -1,0 +1,40 @@
+<html>
+	<head>
+		<script src="https://cdn.jsdelivr.net/npm/kontra@6.2.0/kontra.min.js"></script>
+	</head>
+	<body>
+		<canvas width="800px" height="800px" style="background-color: #eaeaea"></canvas>
+		<script src="core.js"></script>
+		<script>
+			var CANVAS_WIDTH = 800;
+			var CANVAS_HEIGHT = 800;
+			var topology = {"options":{"directed":false,"multigraph":false,"compound":false},"nodes":[{"v":"exoskeleton-frontend-79c786595d-6xvsk"},{"v":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-9kz4z"},{"v":"exoskeleton-frontend-79c786595d-fdrp2"},{"v":"exoskeleton-frontend-79c786595d-ctpvm"},{"v":"exoskeleton-frontend-79c786595d-9c82l"},{"v":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-djksv"}],"edges":[{"v":"exoskeleton-frontend-79c786595d-jmlp4","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-fdrp2","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-fdrp2"},{"v":"exoskeleton-frontend-79c786595d-fdrp2","w":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-jmlp4","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-fdrp2","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-ctpvm","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-tpwfk","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-xglbm","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-fdrp2"},{"v":"exoskeleton-frontend-79c786595d-fdrp2","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-jmlp4","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-9kz4z"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-9kz4z"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-fdrp2"},{"v":"exoskeleton-frontend-79c786595d-tpwfk","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-ctpvm","w":"exoskeleton-frontend-79c786595d-fdrp2"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-ctpvm"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-9c82l"},{"v":"exoskeleton-frontend-79c786595d-ctpvm","w":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-ctpvm"},{"v":"exoskeleton-frontend-79c786595d-ctpvm","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-ctpvm","w":"exoskeleton-frontend-79c786595d-z2c4k"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-ctpvm"},{"v":"exoskeleton-frontend-79c786595d-6xvsk","w":"exoskeleton-frontend-79c786595d-djksv"},{"v":"exoskeleton-frontend-79c786595d-ctpvm","w":"exoskeleton-frontend-79c786595d-djksv"},{"v":"exoskeleton-frontend-79c786595d-9c82l","w":"exoskeleton-frontend-79c786595d-djksv"},{"v":"exoskeleton-frontend-79c786595d-9kz4z","w":"exoskeleton-frontend-79c786595d-djksv"},{"v":"exoskeleton-frontend-79c786595d-djksv","w":"exoskeleton-frontend-79c786595d-fdrp2"},{"v":"exoskeleton-frontend-79c786595d-djksv","w":"exoskeleton-frontend-79c786595d-jmlp4"},{"v":"exoskeleton-frontend-79c786595d-djksv","w":"exoskeleton-frontend-79c786595d-tpwfk"},{"v":"exoskeleton-frontend-79c786595d-djksv","w":"exoskeleton-frontend-79c786595d-xglbm"},{"v":"exoskeleton-frontend-79c786595d-djksv","w":"exoskeleton-frontend-79c786595d-z2c4k"}]};
+			var NETWORK = {
+				NODES: [],
+				EDGES: []
+			};
+
+			for(var i in topology.nodes){
+				NETWORK.NODES.push({
+					id: topology.nodes[i].v
+				});
+			}
+
+			for(var i in topology.edges){
+				NETWORK.EDGES.push({
+					source: topology.edges[i].v,
+					target: topology.edges[i].w
+				});
+			}
+
+			// actual drawing
+			for(var i in NETWORK.NODES){
+				addNode(NETWORK.NODES[i].id);
+			}
+
+			for(var i in NETWORK.EDGES){
+				addLink(NETWORK.EDGES[i].source, NETWORK.EDGES[i].target);
+			}
+		</script>
+	</body>
+</html>
