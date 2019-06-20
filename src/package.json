@@ -12,6 +12,7 @@
     "adaptive-accrual-failure-detector": "^0.1.1",
     "debug": "^4.1.1",
     "end-of-stream": "^1.4.1",
+    "failure-detector": "^0.1.0",
     "graphlib": "github:lynxaegon/graphlib#master",
     "ip": "^1.1.5",
     "kubernetes-client": "^7.0.1",

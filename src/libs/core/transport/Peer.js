@@ -1,5 +1,5 @@
 const EventEmitter = require('events').EventEmitter;
-const FailureDetector = require('adaptive-accrual-failure-detector');
+const FailureDetector = require('failure-detector').FailureDetector;
 
 const pingInterval = 5000;
 const pingCheckInterval = 1000;
@@ -13,6 +13,7 @@ module.exports = class Peer {
 		this.events = new EventEmitter();
 		this.timeouts = {};
 		this.intervals = {};
+		this.connectionTime = (new Date()).getTime();
 
 		this.connected = false;
 		this.failureDetector = new FailureDetector();
@@ -41,7 +42,7 @@ module.exports = class Peer {
 				this.events.emit('connected');
 			}
 
-			this.failureDetector.registerHeartbeat();
+			this.failureDetector.report();
 		});
 	}
 
@@ -80,16 +81,21 @@ module.exports = class Peer {
 	}
 
 	requestDisconnect(err) {
-		if (typeof err !== 'undefined') {
-			this.debug("Requested disconnect via error:", err);
-		}
+		console.log(this.id, "Requested disconnect via error:", err);
+		console.log(this.id, "Failure class");
+		console.log(this.failureDetector);
+		console.log(this.id, "end of failure class with result: ", this.failureDetector.phi());
+		// if (typeof err !== 'undefined') {
+		// }
 	}
 
 	handleDisconnect(err) {
 		if (typeof err !== 'undefined') {
-			this.debug('Disconnected via an error:', err);
+			console.log('Disconnected via an error:', err);
+			// this.debug('Disconnected via an error:', err);
 		} else {
-			this.debug('Disconnected gracefully');
+			console.log('Disconnected gracefully');
+			// this.debug('Disconnected gracefully');
 		}
 
 		for (let i in this.timeouts) {
@@ -109,10 +115,13 @@ module.exports = class Peer {
 	}
 
 	checkFailure() {
-		let result = this.failureDetector.checkFailure();
-		// console.log("CheckFailure", this.id, result);
-		if (result) {
-			this.requestDisconnect("Marked as failure");
+		if(Date.now() - this.connectionTime > 30 * 1000) {
+			let result = this.failureDetector.phi();
+			// console.log("CheckFailure", this.id, result);
+			if (result > 8) {
+				console.log(this.id, "Failed with:", result);
+				this.requestDisconnect("Marked as failure");
+			}
 		}
 	}
 };
