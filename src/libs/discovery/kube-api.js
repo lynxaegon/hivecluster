@@ -31,7 +31,7 @@ module.exports = class DiscoveryKubeApi {
 		return new Promise((resolve) => {
 			let pods = [];
 			let totalPods = 0;
-			kubeClient.api.v1.namespaces(process.env.HIVE_POD_NAMESPACE).pods().get().then(function (result) {
+			kubeClient.api.v1.namespaces(process.env.HIVE_POD_NAMESPACE).pods().get().then((result) => {
 				let podSpec;
 				for (let i in result.body.items) {
 					podSpec = result.body.items[i];

@@ -10,6 +10,7 @@ module.exports = class HivePlugin {
 		});
 
 		this.setup();
+		// TODO: make async the plugin loaded resolver
 		this.pluginLoaded();
 	}
 
