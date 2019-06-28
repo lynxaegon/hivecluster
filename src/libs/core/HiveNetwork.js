@@ -33,17 +33,6 @@ module.exports = class HiveNetwork {
 			}
 		}
 		delete this.options.transports;
-
-		// if(this.options.drawMap){
-		// 	setInterval(() => {
-		// 		let map = [];
-		// 		for(let node of this.nodes){
-		// 			map.push("\t\t" + node.getID() + " - distance: " + node.getDistance() + " - path: " + node.getPath());
-		// 		}
-		// 		console.log("Map:", map.join("\n"));
-		// 	}, 1000);
-		// }
-
 		this.timeouts = {};
 	}
 
