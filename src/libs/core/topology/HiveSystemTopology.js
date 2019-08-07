@@ -213,7 +213,7 @@ module.exports = class HiveSystemTopology extends HiveTopology {
 			data.lastSource = HiveCluster.id;
 			for (const p of this.peers.values()) {
 				if (sourceNeighbors.indexOf(p.id) == -1) {
-					// console.log("sending update to: ", p.id);
+					// console.log("sending update to: ", p.id, data);
 					p.write('nodes', data);
 				}
 			}
@@ -228,18 +228,26 @@ module.exports = class HiveSystemTopology extends HiveTopology {
 			if (routingTable === null)
 				return;
 
+            // let peerList = [];
 			// console.log("routing table:", routingTable);
 			let neighbors = this.networkGraph.neighbors(HiveCluster.id);
 			for (const peer of this.peers.values()) {
-				if(!neighbors.indexOf(peer.id))
+				if(neighbors.indexOf(peer.id) == -1)
 					continue;
 
+				// peerList.push(peer.id);
 				peer.write('nodes', {
 					nodes: routingTable,
 					lastSource: HiveCluster.id,
 					source: HiveCluster.id
 				});
 			}
+            //
+            // console.log("Sending Routing table to", peerList, {
+            //     nodes: routingTable,
+            //     lastSource: HiveCluster.id,
+            //     source: HiveCluster.id
+            // }, neighbors);
 
 			this.broadcastTimeout = null;
 		}, 100);
@@ -267,6 +275,7 @@ module.exports = class HiveSystemTopology extends HiveTopology {
 			}
 
 			nodes.push(data);
+
 		}
 
 		return nodes;

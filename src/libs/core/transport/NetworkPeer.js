@@ -8,7 +8,8 @@ module.exports = class NetworkPeer extends Peer {
 		return {
 			id: this.id,
 			address: ip.address(),
-			port: this.transport.options.port
+			port: this.transport.options.port,
+			weight: this.weight
 		}
 	}
 
@@ -16,6 +17,7 @@ module.exports = class NetworkPeer extends Peer {
 		this.id = msg.id;
 		this.address = msg.address;
 		this.port = msg.port;
+		this.weight = msg.weight;
 	}
 
 	setSocket(socket) {
@@ -73,25 +75,30 @@ module.exports = class NetworkPeer extends Peer {
 	}
 
 	write(type, payload) {
-		if (!this.socket) {
-			this.debug('No socket but tried to send', type, 'with data', payload);
-			return;
-		}
+		return new Promise((resolve, reject) => {
+			if (!this.socket) {
+				this.debug('No socket but tried to send', type, 'with data', payload);
+				reject('No socket');
+				return;
+			}
 
-		if (type != "ping")
-			this.debug('Sending', type, 'with data', payload);
-		const data = msgpack.encode([String(type), payload]);
-		// console.log("Sending data length:", data.length);
-		// console.log("Sending data:", type, payload);
-		try {
-			HiveCluster.EventBus.emit("/debug/record", {
-				to: String(this.id),
-				type: String(type),
-				payload: payload
-			});
-			this.socket.write(data);
-		} catch (err) {
-			console.log('Could not write;', err);
-		}
+			if (type != "ping")
+				this.debug('Sending', type, 'with data', payload);
+			const data = msgpack.encode([String(type), payload]);
+			// console.log("Sending data length:", data.length);
+			// console.log("Sending data:", type, payload);
+			try {
+				HiveCluster.EventBus.emit("/debug/record", {
+					to: String(this.id),
+					type: String(type),
+					payload: payload
+				});
+				this.socket.write(data);
+				resolve();
+			} catch (err) {
+				console.log('Could not write;', err);
+				reject(err);
+			}
+		});
 	}
 };

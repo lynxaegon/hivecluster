@@ -5,7 +5,7 @@ const msgpackCodec = msgpack.createCodec({
 	preset: true
 });
 
-const ws = new WebSocket('ws://127.0.0.1:3000', {
+const ws = new WebSocket('ws://do.lxc.ro:8080', {
 	perMessageDeflate: false
 });
 
@@ -21,7 +21,6 @@ ws.on('message', (data) => {
 		sendMessage("ping");
 		return;
 	}
-	console.log(msg);
 });
 
 

@@ -25,7 +25,7 @@ module.exports = class WSTransport extends AbstractTransport {
 				});
 
 				this.ws.on('error', err => {
-					this.debug('Ignoring error:', err);
+					reject(err);
 				});
 
 				if (this.options.server) {

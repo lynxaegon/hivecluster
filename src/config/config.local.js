@@ -12,7 +12,11 @@ module.exports = {
 					}
 				}
 			],
-			plugins: []
+			plugins: [
+                {
+                    path: "plugins/HiveDB"
+                }
+			]
 		},
 		Clients: {
 			name: "ExoSkeleton-TestNetwork",

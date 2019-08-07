@@ -21,6 +21,10 @@ module.exports = class HivePacket {
 		return this;
 	}
 
+	awaitReply() {
+		return this.replyFnc != false;
+	}
+
 	onReply(replyFnc) {
 		this.replyFnc = replyFnc;
 		return this;
@@ -31,8 +35,27 @@ module.exports = class HivePacket {
 		return this;
 	}
 
-	serialize(seq) {
-		this[seq] = seq;
+	replyFor(_seq){
+		this[seq] = -_seq;
+		return this;
+	}
+
+	getSEQ() {
+		return this[seq];
+	}
+
+	isReply(){
+		if(this[seq] < 0){
+			return true;
+		}
+
+		return false;
+	}
+
+	serialize(_seq) {
+		if(this[seq] == 0)
+			this[seq] = _seq;
+
 		let packet = {
 			req: this[request],
 			data: this[data],
@@ -53,9 +76,17 @@ module.exports = class HivePacket {
 		return {
 			seq: packet.data.seq || packet.data.seqr,
 			data: packet.data.data,
+			node: packet.node,
 			reply: function (data) {
-				// TODO: implement reply sending
-				console.error("!!!!!!!!!!REPLY NOT IMPLEMENTED!!!!!!!!");
+				// Important! Only 1 reply supported!
+				if(packet.data.seqr){
+					throw new Error("Cannot reply to a reply packet!")
+				}
+
+				this.node.send(new HivePacket()
+					.setData(data)
+					.replyFor(packet.data.seq)
+				);
 			}
 		};
 	}

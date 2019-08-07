@@ -67,7 +67,7 @@ module.exports = class HTTPRouterPlugin extends HivePlugin {
 			}
 		}
 
-		console.log("404 sent for", httpPeer.url, this._routes);
+		// console.log("404 sent for", httpPeer.url, this._routes);
 		// return 404
 		httpPeer
 		.status(404)

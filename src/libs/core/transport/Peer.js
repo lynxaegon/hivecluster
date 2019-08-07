@@ -8,6 +8,9 @@ module.exports = class Peer {
 	constructor(transport) {
 		this.transport = transport;
 		this.id = transport.id;
+		this.weight = -1;
+		if(this.id == HiveCluster.id)
+			this.weight = HiveCluster.weight;
 		const ns = transport.debug ? transport.debug.namespace + ":peer" : "HiveCluster:peer";
 		this.debug = HiveClusterModules.debug(ns);
 		this.events = new EventEmitter();
@@ -46,6 +49,10 @@ module.exports = class Peer {
 		});
 	}
 
+	isInternal() {
+		return false;
+	}
+
 	on(event, handler) {
 		this.events.on(event, handler);
 	}
@@ -56,12 +63,14 @@ module.exports = class Peer {
 
 	getAuthPackage() {
 		return {
-			id: this.id
-		}
+			id: this.id,
+			weight: this.weight
+		};
 	}
 
 	processAuthPackage(msg) {
 		this.id = msg.id;
+		this.weight = msg.weight;
 	}
 
 	auth() {

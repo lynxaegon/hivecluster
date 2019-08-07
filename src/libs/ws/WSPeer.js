@@ -6,11 +6,11 @@ const msgpackCodec = msgpack.createCodec({
 	preset: true
 });
 
-module.exports = class WSPeer extends Peer{
-	constructor(transport, socket){
+module.exports = class WSPeer extends Peer {
+	constructor(transport, socket) {
 		super(transport);
 
-		if(socket) {
+		if (socket) {
 			this.setSocket(socket);
 		}
 	}
@@ -25,7 +25,7 @@ module.exports = class WSPeer extends Peer{
 					this.debug('Incoming', msg[0], 'with payload', msg[1]);
 				this.events.emit(msg[0], msg[1]);
 			}
-			catch(e){
+			catch (e) {
 				this.requestDisconnect(e);
 			}
 		});
@@ -48,10 +48,18 @@ module.exports = class WSPeer extends Peer{
 	}
 
 	write(type, payload) {
-		if (type != "ping")
-			this.debug('Sending', type, 'with data', payload);
+		return new Promise((resolve, reject) => {
+			try {
+				if (type != "ping")
+					this.debug('Sending', type, 'with data', payload);
 
-		const data = msgpack.encode([ String(type), payload ], { codec: msgpackCodec });
-		this.socket.send(data);
+				const data = msgpack.encode([String(type), payload], {codec: msgpackCodec});
+				this.socket.send(data);
+				resolve();
+			}
+			catch(e){
+				reject(e);
+			}
+		})
 	}
 };

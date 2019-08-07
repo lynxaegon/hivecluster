@@ -156,19 +156,28 @@ module.exports = class HiveNetwork {
 	}
 
 	send(payload, nodes) {
-		if (HiveClusterModules.Utils.isFunction(nodes))
-			nodes = this.getNodes(nodes);
+		return new Promise((resolve, reject) => {
+			if (HiveClusterModules.Utils.isFunction(nodes))
+				nodes = this.getNodes(nodes);
 
-		if (!nodes)
-			return;
+			if (!nodes) {
+				reject("No nodes found!");
+				return;
+			}
 
-		if (!HiveClusterModules.Utils.isArray(nodes)) {
-			nodes = [nodes];
-		}
+			if (!HiveClusterModules.Utils.isArray(nodes)) {
+				nodes = [nodes];
+			}
 
-		for (let node of nodes) {
-			node.send(payload);
-		}
+			let acks = [];
+			for (let node of nodes) {
+				acks.push(
+					node.send(payload)
+				);
+			}
+
+			Promise.all(acks).then(resolve).catch(reject);
+		});
 	}
 
 	getNodes(filterFnc) {
@@ -181,6 +190,30 @@ module.exports = class HiveNetwork {
 				result.push(this.nodes[i]);
 		}
 		return result;
+	}
+
+	getInternalNode() {
+		let nodes = this.getNodes();
+		for(let node of nodes){
+			if(node.isInternal())
+				return node;
+		}
+
+		return false;
+	}
+
+	getLowestWeightedNode() {
+		let nodes = this.getNodes();
+		let minWeight = Number.MAX_SAFE_INTEGER;
+		let lowestWeightedNode = null;
+		for(let node of nodes){
+			if(node.getWeight() < minWeight) {
+				minWeight = node.getWeight();
+				lowestWeightedNode = node;
+			}
+		}
+
+		return lowestWeightedNode;
 	}
 
 	drawMap() {

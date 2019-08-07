@@ -18,15 +18,48 @@ module.exports = class HiveNode extends EventEmitter {
 		return this[wrapped].id;
 	}
 
+	getWeight() {
+		return this[wrapped].weight;
+	}
+
+	isInternal() {
+		return this[wrapped].isInternal();
+	}
+
 	send(payload) {
-		this[wrapped].send([1, payload.serialize(this[seq]())]);
+        let seqID;
+		if(!payload.isReply()){
+			seqID = this[seq]();
+        } else {
+			seqID = payload.getSEQ();
+		}
+		if(payload.awaitReply()){
+			this[packets]["_" + seqID] = {
+				onReply: payload.replyFnc,
+				onReplyFail: payload.replyFailFnc,
+				timeout: setTimeout(() => {
+					console.log("reply timeout!");
+					let replyFail = this[packets]["_" + seqID].onReplyFail;
+					delete this[packets]["_" + seqID];
+
+					if(replyFail){
+						replyFail();
+					}
+				}, 5000)
+			};
+		}
+		return this[wrapped].send([1, payload.serialize(seqID)]);
 	}
 
 	processReply(packet) {
 		if (this[packets]["_" + packet.seq]) {
-			this[packets]["_" + packet.seq].onReply(packet);
+			let reply = this[packets]["_" + packet.seq].onReply;
+			clearTimeout(this[packets]["_" + packet.seq].timeout);
+			delete this[packets]["_" + packet.seq];
+
+			reply(packet);
 		} else {
-			console.error("Invalid reply packet. Should drop!", packet);
+			console.error("Invalid reply packet. Should drop!");
 		}
 	}
 
