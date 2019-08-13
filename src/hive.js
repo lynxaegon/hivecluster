@@ -13,7 +13,7 @@ const modules = {
 for (let moduleName in modules) {
 	global.HiveClusterModules[moduleName] = require(modules[moduleName]);
 }
-global.Logger = new (require("libs/utils/logger"));
+global.Logger = new (require("libs/utils/logger"))(true);
 global.HivePacket = require("libs/core/transport/HivePacket");
 
 let argv = require('minimist')(process.argv.slice(2));

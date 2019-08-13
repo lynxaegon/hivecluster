@@ -1,11 +1,13 @@
+const EventEmitter = require('events').EventEmitter;
 const HiveRaftStates = Object.freeze({
     CANDIDATE: 1,
     FOLLOWER: 2,
     LEADER: 3
 });
 
-class HiveRaftEngine {
+class HiveRaftEngine extends EventEmitter {
     constructor() {
+        super();
         this.state = HiveRaftStates.CANDIDATE;
     }
 
@@ -77,3 +79,4 @@ class HiveRaftEngine {
         };
     }
 }
+module.exports = HiveRaftEngine;

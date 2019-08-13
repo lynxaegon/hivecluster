@@ -92,13 +92,13 @@ class Utils {
 	}
 
 	readFromDBCursor(cursor, callback) {
-		return new Promise(function (resolve) {
+		return new Promise((resolve) => {
 			if (cursor.isClosed()) {
 				callback(null, null);
 				resolve();
 				return false;
 			}
-			cursor.nextObject(function (err, item) {
+			cursor.nextObject((err, item) => {
 				if (item == null) {
 					// cursor finished
 					cursor.close();
@@ -106,7 +106,7 @@ class Utils {
 					return false;
 				}
 				callback(err, item);
-				Utils.readFromDBCursor(cursor, callback).then(resolve);
+				this.readFromDBCursor(cursor, callback).then(resolve);
 			})
 		})
 	}

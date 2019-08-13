@@ -8,8 +8,6 @@ class HiveRaftMetaDB {
         this.filename = BASE_LOCATION + name + ".metadata";
         this.db = levelup(leveldown(this.filename));
     }
-
-
 }
 
 module.exports = HiveRaftMetaDB;
