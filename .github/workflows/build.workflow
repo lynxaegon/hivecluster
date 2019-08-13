@@ -4,6 +4,6 @@ workflow "Build & Deploy" {
 }
 
 action "Build & Deploy" {
-  uses = "./.github/build-workflow/"
+  uses = "./.github/actions/build-action/"
   secrets = ["KUBE_CERTS_DOWNLOADER"]
 }
