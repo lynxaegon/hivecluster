@@ -8,4 +8,4 @@ docker push lynxaegon/hivecluster
 
 ls -lah
 echo "------------------"
-kubectl --kubeconfig="certs.yaml" set image deployment exoskeleton-frontend exoskeleton-frontend=$(docker inspect --format='{{index .RepoDigests 0}}' lynxaegon/hivecluster:latest)
+kubectl --kubeconfig="./certs.yaml" set image deployment exoskeleton-frontend exoskeleton-frontend=$(docker inspect --format='{{index .RepoDigests 0}}' lynxaegon/hivecluster:latest)
