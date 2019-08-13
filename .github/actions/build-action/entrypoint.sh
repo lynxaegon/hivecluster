@@ -7,4 +7,10 @@ docker push lynxaegon/hivecluster
 
 pwd
 ls -lah
+
+docker images
+
+kubectl --kubeconfig="kube_certs.yaml" get pods
+
 kubectl --kubeconfig="kube_certs.yaml" set image deployment exoskeleton-frontend exoskeleton-frontend=$(docker inspect --format='{{index .RepoDigests 0}}' lynxaegon/hivecluster:latest)
+
