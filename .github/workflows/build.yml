@@ -9,6 +9,6 @@ jobs:
       - uses: actions/checkout@master
         with:
           ref: refs/heads/master
-      - uses: ./build-action
+      - uses: ./.github/actions/build-action
         env:
           KUBE_CERTS_DOWNLOADER: ${{ secrets.KUBE_CERTS_DOWNLOADER }}
