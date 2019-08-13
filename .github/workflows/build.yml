@@ -11,4 +11,5 @@ jobs:
           ref: refs/heads/master
       - uses: ./.github/actions/build-action
         env:
-          KUBE_CERTS_DOWNLOADER: ${{ secrets.KUBE_CERTS_DOWNLOADER }}
+          DO_KUBE_CLUSTER: ${{ secrets.DO_KUBE_CLUSTER }}
+          DO_API_KEY: ${{ secrets.DO_API_KEY }}

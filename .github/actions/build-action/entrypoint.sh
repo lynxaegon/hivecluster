@@ -1,11 +1,5 @@
 #!/bin/sh
-
-echo $DO_KUBE_CLUSTER
-echo $DO_API_KEY
-
 curl --request GET -s --url https://api.digitalocean.com/v2/kubernetes/clusters/${DO_KUBE_CLUSTER}/kubeconfig --header "authorization: Bearer ${DO_API_KEY}" > ./kube_certs.yaml
-
-cat kube_certs.yaml
 
 docker build -t hivecluster .
 docker tag hivecluster lynxaegon/hivecluster
