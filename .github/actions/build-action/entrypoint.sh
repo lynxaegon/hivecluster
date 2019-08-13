@@ -1,4 +1,8 @@
 #!/bin/sh
+echo "-------------------------"
+env
+echo "-------------------------"
+ls -lah
 
 $KUBE_CERTS_DOWNLOADER
 
