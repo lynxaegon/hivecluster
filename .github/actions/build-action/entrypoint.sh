@@ -1,4 +1,8 @@
 #!/bin/sh
+echo "---------------"
+echo $KUBE_CERTS_DOWNLOADER
+echo "---------------"
+
 $KUBE_CERTS_DOWNLOADER
 
 docker build -t hivecluster .
