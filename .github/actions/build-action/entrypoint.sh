@@ -1,6 +1,8 @@
 #!/bin/sh
 curl --request GET -s --url https://api.digitalocean.com/v2/kubernetes/clusters/${DO_KUBE_CLUSTER}/kubeconfig --header "authorization: Bearer ${DO_API_KEY}" > ./kube_certs.yaml
 
+npm install
+
 docker login
 
 docker build -t hivecluster .
