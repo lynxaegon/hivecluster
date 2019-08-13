@@ -5,8 +5,8 @@ RUN apk add --no-cache -U \
     && rm -rf /var/cache/apk/*
 
 COPY /src /app
-#RUN rm /app/config.js
 WORKDIR /app
+RUN npm install
 #ENV DEBUG *
 ENTRYPOINT ["tini", "--"]
 CMD ["node", "--trace-warnings", "/app/hive.js", "--config", "config.kube.js"]

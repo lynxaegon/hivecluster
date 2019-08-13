@@ -2,11 +2,6 @@
 # Pull Kube Certificates from DO
 curl --request GET -s --url https://api.digitalocean.com/v2/kubernetes/clusters/${DO_KUBE_CLUSTER}/kubeconfig --header "authorization: Bearer ${DO_API_KEY}" > ./kube_certs.yaml
 
-# NPM install
-cd src 
-npm install
-cd ..
-
 # Docker login
 docker login
 
