@@ -4,7 +4,11 @@ on: [push]
 jobs:
   build_and_deploy:
     name: Build & Deploy
+    runs-on: ubuntu-latest
     steps:
-      - uses: docker://lynxaegon/kube-builder:v1.0
+      - uses: actions/checkout@master
+        with:
+          ref: refs/heads/master
+      - uses: ./build-action
         env:
           KUBE_CERTS_DOWNLOADER: ${{ secrets.KUBE_CERTS_DOWNLOADER }}
