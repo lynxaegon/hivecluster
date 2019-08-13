@@ -1,9 +1,10 @@
-workflow "Build & Deploy" {
-  on = "push"
-  resolves = ["Build & Deploy"]
-}
+name: Build & Deploy
+on: [push]
 
-action "Build & Deploy" {
-  uses = "./.github/actions/build-action/"
-  secrets = ["KUBE_CERTS_DOWNLOADER"]
-}
+jobs:
+  build_and_deploy:
+    name: Build & Deploy
+    steps:
+      - uses: docker://lynxaegon/kube-builder:v1.0
+        env:
+          KUBE_CERTS_DOWNLOADER: ${{ secrets.KUBE_CERTS_DOWNLOADER }}
