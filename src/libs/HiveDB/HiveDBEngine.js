@@ -1,5 +1,5 @@
 // private config
-const memStore = true;
+const memStore = false;
 
 
 const fs = require('fs');

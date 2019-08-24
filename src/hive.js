@@ -6,7 +6,7 @@ global.HiveCluster = {};
 
 const modules = {
 	debug: "debug",
-	Utils: "libs/utils/utils",
+	Utils: "libs/utils/Utils",
 	HiveNetwork: "libs/core/HiveNetwork",
 	HivePluginManager: "libs/core/plugins/HivePluginManager"
 };
@@ -93,11 +93,11 @@ Promise.all(networkPromises).then(() => {
 	});
 
 	HiveCluster.Nodes.on("test", function (packet) {
-		console.log(packet.node);
+		console.log(packet);
 		// console.log(arguments);
 		packet.reply("mkay.. replssssssy here :D");
 	});
-
+	//
 	// setTimeout(() => {
 	// 	HiveCluster.Nodes.send(new HivePacket()
 	// 	.setRequest("test")
