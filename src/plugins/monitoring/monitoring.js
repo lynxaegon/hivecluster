@@ -52,7 +52,7 @@ module.exports = class MonitoringPlugin extends HivePlugin {
                     httpPeer.header("content-type", "text/html; charset=utf-8");
                     httpPeer.end();
 					console.log("failed packet!");
-				}), HiveCluster.Nodes.getNodes()
+				})
 			);
 		});
 

@@ -12,6 +12,7 @@ module.exports = {
 					}
 				}
 			],
+			networkReadyCheck: true,
 			plugins: []
 		},
 		Clients: {

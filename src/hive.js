@@ -27,7 +27,7 @@ argv.port = argv.port || 5000;
 HiveCluster.args = argv;
 HiveCluster.weight = (new Date()).getTime();
 HiveCluster.id = HiveCluster.args.port + "";
-HiveCluster.id = HiveClusterModules.Utils.uuidv4();
+// HiveCluster.id = HiveClusterModules.Utils.uuidv4();
 
 global.HIVE_CONFIG = require(argv.config);
 
@@ -54,6 +54,7 @@ for (let key in HIVE_CONFIG.networks) {
 	HiveCluster[key] = new HiveClusterModules.HiveNetwork({
 		name: HIVE_CONFIG.networks[key].name,
 		type: HIVE_CONFIG.networks[key].type,
+		networkReadyCheck: !!HIVE_CONFIG.networks[key].networkReadyCheck,
 		transports: transports
 	});
 }
@@ -92,11 +93,25 @@ Promise.all(networkPromises).then(() => {
 		});
 	});
 
-	HiveCluster.Nodes.on("test", function (packet) {
-		console.log(packet);
-		// console.log(arguments);
-		packet.reply("mkay.. replssssssy here :D");
-	});
+	for (let key in HiveCluster) {
+		if (!HiveCluster.hasOwnProperty(key))
+			continue;
+
+		if (HiveCluster[key] instanceof HiveClusterModules.HiveNetwork) {
+			if(HiveCluster[key].options.networkReadyCheck){
+				HiveCluster[key].send(
+					new HivePacket()
+					.setRequest("/system/ready")
+				);
+			}
+		}
+	}
+
+	// HiveCluster.Nodes.on("test", function (packet) {
+	// 	console.log(packet);
+	// 	// console.log(arguments);
+	// 	packet.reply();
+	// });
 	//
 	// setTimeout(() => {
 	// 	HiveCluster.Nodes.send(new HivePacket()

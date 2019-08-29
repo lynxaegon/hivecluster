@@ -36,30 +36,43 @@ module.exports = class HiveNetwork {
 		this.timeouts = {};
 	}
 
+	// TDOO: Only supports a single transport!
 	addTransport(transport) {
+		let topology;
+		switch(this.options.type){
+			case HiveNetwork.TYPE.SYSTEM:
+				topology = new HiveSystemTopology();
+				break;
+			case HiveNetwork.TYPE.CLIENTS:
+				topology = new HiveClientsTopology();
+				break;
+			default:
+				throw new Error("Invalid Hive Topology!");
+
+		}
 		// systemNetworks push each transport in a new network
 		// clientNetworks just adds a single network and pushes transports
-		if(this.options.type == HiveNetwork.TYPE.SYSTEM){
+		// if(this.options.type == HiveNetwork.TYPE.SYSTEM){
+		// 	this.networks.push(
+		// 		new Network(new HiveSystemTopology(), {
+		// 			name: this.options.name,
+		// 			transport: transport
+		// 		})
+		// 	);
+		// } else if(this.options.type == HiveNetwork.TYPE.CLIENTS){
+		if(this.networks.length <= 0){
 			this.networks.push(
-				new Network(new HiveSystemTopology(), {
+				new Network(topology, {
 					name: this.options.name,
 					transport: transport
 				})
 			);
-		} else if(this.options.type == HiveNetwork.TYPE.CLIENTS){
-			if(this.networks.length <= 0){
-				this.networks.push(
-					new Network(new HiveClientsTopology(), {
-						name: this.options.name,
-						transport: transport
-					})
-				);
-			} else {
-				this.networks[0].addTransport(transport);
-			}
 		} else {
-			throw new Error("Invalid HiveNetwork topology Type!");
+			this.networks[0].addTransport(transport);
 		}
+		// } else {
+		// 	throw new Error("Invalid HiveNetwork topology Type!");
+		// }
 	}
 
 	getTopology() {
@@ -107,11 +120,13 @@ module.exports = class HiveNetwork {
 		network.on('node:available', node => {
 			console.log("node added", node.getID(), node.isDirect());
 			this.nodes.push(node);
+			this.emit("/system/node/added", node);
 		});
 
 		// HiveNode path updated
 		network.on('node:update', node => {
 			console.log("node updated", node.getID(), node.isDirect());
+			this.emit("/system/node/updated", node);
 		});
 
 		// HiveNode fully disconnected from the cluster
@@ -119,6 +134,7 @@ module.exports = class HiveNetwork {
 			let idx = this.nodes.indexOf(node);
 			this.nodes.splice(idx, 1);
 			console.log("node removed", node.getID(), node.isDirect());
+			this.emit("/system/node/removed", node);
 		});
 
 		// HiveNode message handler
@@ -157,8 +173,7 @@ module.exports = class HiveNetwork {
 
 	send(payload, nodes) {
 		return new Promise((resolve, reject) => {
-			if (HiveClusterModules.Utils.isFunction(nodes))
-				nodes = this.getNodes(nodes);
+			nodes = this.getNodes(nodes);
 
 			if (!nodes) {
 				reject("No nodes found!");

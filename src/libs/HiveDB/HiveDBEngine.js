@@ -1,8 +1,8 @@
 // private config
-const memStore = false;
+const memStore = true;
 
 
-const fs = require('fs');
+const fs = require('fs-extra');
 const DBEngine = require('tingodb')({
     memStore: memStore,
     nativeObjectID: true,
@@ -13,22 +13,25 @@ const DBEngine = require('tingodb')({
 const DB = DBEngine.Db;
 
 class HiveDBEngine {
-    constructor(db, collection, group) {
-        this._collectionName = collection;
-        let dbDirectory = './db/' + db;
+    constructor(collection, type, group) {
+        this.collectionName = collection;
+        this.type = type;
+        let dbDirectory = './db/' + collection + '/' + group;
         if(!memStore) {
-            if (!fs.existsSync(dbDirectory)) {
-                fs.mkdirSync(dbDirectory);
-            }
+			fs.ensureDirSync(dbDirectory);
         }
         this.db = new DB(dbDirectory, {});
-        this.collection = this.db.collection(collection);
+        this.collection = this.db.collection(this.type);
         this._debug = false;
         this.group = group;
     }
 
+    getType() {
+        return this.type;
+    }
+
     getCollectionName() {
-        return this._collectionName;
+        return this.collectionName;
     }
 
     isMetadata() {
@@ -71,9 +74,10 @@ class HiveDBEngine {
         if (!packet.id) {
             throw new Error("Received packet without packet id;" + JSON.stringify(packet));
         }
+		// console.log("Delete (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
         return new Promise(function (resolve) {
-            if (self._debug)
-                Logger.log("Delete ID (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
+            // if (self._debug)
+            //     Logger.log("Delete ID (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
             self.collection.remove(packet.data, function (err, count) {
                 if (err) {
                     Logger.log("HiveDBEngine (delete):", err);

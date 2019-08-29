@@ -38,7 +38,7 @@ module.exports = class HiveNode extends EventEmitter {
 				onReply: payload.replyFnc,
 				onReplyFail: payload.replyFailFnc,
 				timeout: setTimeout(() => {
-					console.log("reply timeout!");
+					console.log("reply timeout!", payload);
 					let replyFail = this[packets]["_" + seqID].onReplyFail;
 					delete this[packets]["_" + seqID];
 
