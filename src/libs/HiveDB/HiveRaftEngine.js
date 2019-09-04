@@ -1,3 +1,4 @@
+const util = require("util");
 const EventEmitter = require('events').EventEmitter;
 const HiveDBEngine = require('./HiveDBEngine');
 const HiveRaftStates = Object.freeze({
@@ -8,135 +9,144 @@ const HiveRaftStates = Object.freeze({
 const HiveQueue = require('libs/queues/HiveQueue');
 
 class HiveRaftEngine extends EventEmitter {
-    constructor(raftID, hiveCluster, options) {
+    constructor(raftID, hiveNetwork, raftImplementation, options) {
         super();
 
-        this.nodeList = [];
 		this.handleQueue = false;
-        this.hiveCluster = hiveCluster;
+        this.hiveNetwork = hiveNetwork;
 		this.state = HiveRaftStates.CANDIDATE;
         this.leaderID = false;
+        this.raftImplementation = raftImplementation;
+        if(!this.raftImplementation){
+        	throw new Error("Invalid HiveRaft implementation!");
+		}
 
-        this.raftID = raftID;
         this.options = HiveClusterModules.Utils.extend({
-            raft: this,
 			collection: "default",
-            group: "__global__",
-            discovery: false
+            group: "__global__"
 		}, options);
+		this.raftID = raftID;
+		// console.log(this.raftID);
 
         this.db = {
             metadata: new HiveDBEngine(this.options.collection, "metadata", this.options.group),
             data: new HiveDBEngine(this.options.collection, "data", this.options.group)
         };
 
-		setInterval(() => {
-        	console.log("===============");
-			this.db.metadata.findOne({_id: "metadata"}, (err, item) => {
-				this.errorCatcher(err);
-
-				if(item !== null) {
-					console.log("metadata", item);
-				}
-			});
-			HiveClusterModules.Utils.readFromDBCursor(this.db["data"].find({}), (err, item) => {
-				this.errorCatcher(err);
-
-				if(item !== null) {
-					console.log("data", item);
-				}
-			});
-		}, 1000);
-
         this.setup();
 
-        if(this.options.discovery){
-            this.options.discovery.init(this);
-        }
+        this.raftImplementation.init(this);
+        this.raftImplementation.on("nodeReady", (...args) => {
+			this.emit.call(this, "nodeReady", ...args);
+		});
+		this.raftImplementation.on("newLeader", (...args) => {
+			this.emit.call(this, "newLeader", ...args);
+		});
     }
 
+    printDebugInfo() {
+		console.log("===============");
+		this.db.metadata.findOne({_id: "metadata"}, (err, item) => {
+			this.errorCatcher(err);
+
+			if(item !== null) {
+				console.log("metadata", item);
+			}
+		});
+		HiveClusterModules.Utils.readFromDBCursor(this.db.data.find({}), (err, item) => {
+			this.errorCatcher(err);
+
+			if(item !== null) {
+				console.log("["+this.options.group+"]","data", item);
+			}
+		});
+	}
+
+    onInit(initFnc) {
+    	this.raftImplementation.onInit(initFnc);
+	}
+
     setup() {
-		this.hiveCluster.on("/system/node/removed", (node) => {
+		this.hiveNetwork.on("/system/node/removed", (node) => {
 			this.removeNode(node);
+
 		});
 
-		this.hiveCluster.on("/hiveraft/" + this.raftID + "/ready/" + this.options.group, (packet) => {
-			if(this.options.onFollower)
-				this.options.onFollower.call(this, this.leaderID);
+		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/nodeReady/" + this.options.group, (packet) => {
+			if(this.raftImplementation.onNodeReady)
+				this.raftImplementation.onNodeReady(packet.data.id);
 		});
-		this.hiveCluster.on("/hiveraft/" + this.raftID + "/" + this.db.metadata.getType() + "/" + this.options.group + "/write", (packet) => {
+
+		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/ready/" + this.options.group, (packet) => {
+			if(this.raftImplementation.onFollower)
+				this.raftImplementation.onFollower(this.leaderID);
+
+			packet.reply();
+		});
+		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/" + this.db.metadata.getType() + "/" + this.options.group + "/write", (packet) => {
+			// console.log("got write for", this.options.group);
 			this.handle(this.db.metadata, packet.data, packet.node.getID()).then(() => {
 				packet.reply();
 			});
 		});
-		this.hiveCluster.on("/hiveraft/" + this.raftID + "/" + this.db.data.getType() + "/" + this.options.group + "/write", (packet) => {
+		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/" + this.db.data.getType() + "/" + this.options.group + "/write", (packet) => {
+			// console.log("got write for", this.options.group);
 			this.handle(this.db.data, packet.data, packet.node.getID()).then(() => {
 				packet.reply();
 			});
 		});
+
+		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/" + this.db.data.getType() + "/" + this.options.group + "/read", (packet) => {
+			this.findOne({_id: packet.data.id}, (err, item) => {
+				packet.reply({
+					err: err,
+					result: item
+				});
+			});
+		});
 	}
 
-	addNodes(nodes){
-    	if(!nodes)
-    		return;
+	addNode(nodeID) {
+    	return new Promise((resolve, reject) => {
+			if(!this.leaderID){
+				this.raftImplementation.leaderElection((...args) => {
+					this.promoteLeader.call(this, ...args);
+					resolve();
+				});
+			} else if(this.isLeader() && nodeID != this.leaderID) {
+				// init metadata and data
+				this.initMetadata(nodeID).then(() => {
+					this.initData(nodeID).then((node) => {
+						node.send(new HivePacket()
+							.setRequest("/hiveraft/" + this.options.collection + "/" + this.raftID + "/ready/" + this.options.group)
+							.setData({
+								sync: true
+							})
+							.onReply(() => {
+								resolve();
+							})
+							.onReplyFail(reject)
+						);
 
-    	if(!HiveClusterModules.Utils.isArray(nodes))
-    		nodes = [nodes];
-
-		let idx;
-		for(let node of nodes){
-			idx = this.nodeList.indexOf(node);
-			if(idx !== -1){
-				nodes.splice(idx, 1);
+						if (this.raftImplementation.onNodeAdded)
+							this.raftImplementation.onNodeAdded(node.getID());
+					});
+				});
+			} else {
+				resolve();
 			}
-		}
-
-		this.nodeList = this.nodeList.concat(nodes);
-		for(let node of nodes){
-			this.processNode(node.getID());
-		}
-
-	}
-
-	processNode(nodeID) {
-    	if(!this.leaderID){
-			this.leaderElection(this.promoteLeader.bind(this));
-		} else if(this.isLeader()) {
-            // init metadata and data
-            this.initMetadata(nodeID).then(() => {
-                this.initData(nodeID).then((node) => {
-					node.send(new HivePacket()
-						.setRequest("/hiveraft/" + this.raftID + "/ready/" + this.options.group)
-						.setData({
-							sync: true
-						})
-					);
-					if (this.options.onNodeAdded)
-						this.options.onNodeAdded.call(this, node.getID());
-                });
-            });
-        }
-
-		return true;
+		});
     }
 
     removeNode(node, leaderChanged){
-		let idx = this.nodeList.indexOf(node);
-		if(idx !== -1){
-			this.nodeList.splice(idx, 1);
-		}
+		if(this.isLeader(node.getID())) {
+			this.changeState(HiveRaftStates.CANDIDATE);
 
-        if(this.isLeader(node.getID())) {
-            this.leaderElection((leader) => {
-                if (leader == HiveCluster.id) {
-                    this.promoteLeader(leader, node.getID());
-
-                    // if the leader changed, reapply the change so the leader knows about the removal
-                    this.removeNode(node, true);
-                } else {
-                	this.changeState(HiveRaftStates.FOLLOWER);
-                }
-            });
+			this.raftImplementation.leaderElection((leader) => {
+				this.promoteLeader(leader, node.getID());
+				// if the leader changed, reapply the change so the leader knows about the removal
+				this.removeNode(node, true);
+            }, true);
             return true;
         }
 
@@ -154,8 +164,13 @@ class HiveRaftEngine extends EventEmitter {
 				this.write("metadata", null, query);
 			}
 
-			if (this.options.onNodeRemoved)
-				this.options.onNodeRemoved.call(this, node.getID());
+			let promise = false;
+			if (this.raftImplementation.onNodeRemoved)
+				promise = this.raftImplementation.onNodeRemoved(node.getID());
+
+			Promise.all([promise]).then(() => {
+				this.emit("nodeRemoved", node.getID());
+			});
 		}
     }
 
@@ -186,13 +201,21 @@ class HiveRaftEngine extends EventEmitter {
         return this.handle(this.db["data"], this.packet(query._id, query, 'delete'), false);
     }
 
+	find(query, fields) {
+		return this.db.data.find(query, fields);
+	}
+
+	findOne(query, cb){
+		this.db.data.findOne(query, cb);
+	}
+
     handle(db, packet, from, resolveFnc, rejectFnc) {
 		// console.log("handle:", util.inspect(arguments[1], {showHidden: false, depth: null}));
         if(!this.handleQueue){
 			this.handleQueue = new HiveQueue((item) => {
 				return new Promise((resolve, reject) => {
 					item.db[item.packet.type](item.packet).then(() => {
-						this.getAllNodes((result) => {
+						this.getNodes((result) => {
 							if(!result || !result.followers) {
 								if(item.resolve)
 									item.resolve();
@@ -249,7 +272,7 @@ class HiveRaftEngine extends EventEmitter {
 					}
 					break;
 				case HiveRaftStates.CANDIDATE:
-					console.log("[HIVEDB][CANDIDATE] Missed packet", packet.data, packet.leader);
+					console.log("[HIVEDB]["+this.options.collection+"]["+this.options.group+"][CANDIDATE] Missed packet", packet.data, packet.leader);
 					break;
 				default:
 					throw new Error("Received data while in unknown state '"+ this.state +"'");
@@ -265,56 +288,16 @@ class HiveRaftEngine extends EventEmitter {
         return this.leaderID == nodeID;
     }
 
-    leaderElection(cb) {
-        if(!HiveClusterModules.Utils.isFunction(cb))
-    		return false;
+    getLeader(cb){
+		this.getNodes((result) => {
+			if (!result || !result.leader) {
+				cb(false);
+				return;
+			}
 
-        this.changeState(HiveRaftStates.CANDIDATE);
-        if(!this.leaderID){
-			cb(this.getLowestWeightedNode().getID());
-			return true;
-		}
-
-    	this.getAllNodes((result) => {
-    		if(!result){
-    			throw new Error("No nodes found!!!");
-    			process.exit(-1);
-    		}
-
-    		if(!result.followers) {
-    			throw new Error("No followers to promote to leader!");
-    			process.exit(-1);
-    			return false;
-    		}
-
-            let nodes = this.nodeList;
-    		nodes.sort((a,b) => {
-    			return a.getWeight() - b.getWeight();
-    		});
-
-    		let getIndex = (arr, id) => {
-    			for(let i = 0; i < arr.length; i++){
-    				if(arr[i].node.getID() == id)
-    					return i;
-    			}
-    			return false;
-    		};
-
-    		(function elector(index){
-    			if(index >= nodes.length){
-    				throw new Error("No fully ready data nodes available! (metadata ready & data ready)");
-    				process.exit(-1);
-    			}
-
-    			let nodeIndex = getIndex(result.followers, nodes[index].getID());
-    			if(nodeIndex !== false){
-					cb(nodes[index].getID());
-					return true;
-    			}
-    			elector(index + 1);
-    		}.bind(this))(0);
-    	});
-    }
+			cb(result.leader.node);
+		});
+	}
 
     promoteLeader(leader, removedNode) {
 		let query;
@@ -339,17 +322,16 @@ class HiveRaftEngine extends EventEmitter {
 			}
 
 			this.write("metadata", null, query).then(() => {
-				if(this.options.onLeader)
-					this.options.onLeader.call(this, this.leaderID);
-				if(this.options.onNodeAdded)
-					this.options.onNodeAdded.call(this, this.leaderID);
+				if(this.raftImplementation.onLeader)
+					this.raftImplementation.onLeader(this.leaderID);
 			});
 		} else {
 			this.changeState(HiveRaftStates.FOLLOWER);
 		}
     }
 
-    getAllNodes(callback){
+    getNodes(callback, merged){
+		merged = merged || false;
 		if(!HiveClusterModules.Utils.isFunction(callback)){
 			return;
 		}
@@ -391,7 +373,20 @@ class HiveRaftEngine extends EventEmitter {
 				if(Object.keys(nodes) == 0){
 					callback(null);
 				} else {
-					callback(nodes);
+					if(merged) {
+						let arr = [];
+						if(nodes.leader){
+							arr.push(nodes.leader.node);
+						}
+						if(nodes.followers) {
+							for (let node of nodes.followers){
+								arr.push(node.node);
+							}
+						}
+						callback(arr);
+					} else {
+						callback(nodes);
+					}
 				}
 			});
 		});
@@ -399,12 +394,10 @@ class HiveRaftEngine extends EventEmitter {
 
     getNode(nodeID){
         return new Promise((resolve) => {
-            let node = this.nodeList.find((node) => {
-				return node.getID() == nodeID;
-			});
+            let node = this.hiveNetwork.getNode(nodeID);
 
             if(node) {
-                this.options.raft.db["data"].findOne({_id: "node/" + node.getID()}, (err, result) => {
+                this.raftImplementation.globalRaftEngine.db["data"].findOne({_id: "node/" + node.getID()}, (err, result) => {
 
                     resolve({
                         node: node,
@@ -423,9 +416,7 @@ class HiveRaftEngine extends EventEmitter {
     }
 
     initMetadata(nodeID) {
-        let node = this.nodeList.find((node) => {
-            return node.getID() == nodeID;
-        });
+        let node = this.hiveNetwork.getNode(nodeID);
 
         return new Promise((resolve, reject) => {
 			this.write("metadata", null, {
@@ -445,9 +436,7 @@ class HiveRaftEngine extends EventEmitter {
     }
 
     initData(nodeID) {
-		let node = this.nodeList.find((node) => {
-			return node.getID() == nodeID;
-		});
+		let node = this.hiveNetwork.getNode(nodeID);
 
         return new Promise((resolve) => {
             HiveClusterModules.Utils.readFromDBCursor(this.db["data"].find({}), (err, item) => {
@@ -489,13 +478,25 @@ class HiveRaftEngine extends EventEmitter {
 
 		for(let node of nodes) {
 			node.send(new HivePacket()
-				.setRequest("/hiveraft/" + this.raftID + "/" + db.getType() + "/" + this.options.group + "/write")
+				.setRequest("/hiveraft/" + this.options.collection + "/" + this.raftID + "/" + db.getType() + "/" + this.options.group + "/write")
 				.setData(data)
 				.onReply(resolve)
 				.onReplyFail(reject)
 			);
 		}
     }
+
+    forward(db, data){
+		if(this.isLeader())
+			throw new Error("Forwarding data while in LEADER state! Investigate this one!!!!");
+		return new Promise((resolve, reject) => {
+			// forward to leader (only leader accepts writes)
+			this.getLeader((node) => {
+				// console.log("Forwarded to leader", leader, data);
+				this.send(node, db, data, resolve, reject);
+			});
+		});
+	}
 
     packet(id, data, type){
 		return {
@@ -514,19 +515,6 @@ class HiveRaftEngine extends EventEmitter {
 		}
 	}
 
-	getLowestWeightedNode() {
-		let minWeight = Number.MAX_SAFE_INTEGER;
-		let lowestWeightedNode = null;
-		for(let node of this.nodeList){
-			if(node.getWeight() < minWeight) {
-				minWeight = node.getWeight();
-				lowestWeightedNode = node;
-			}
-		}
-
-		return lowestWeightedNode;
-	}
-
 	changeState(state){
 		switch (state){
 			case HiveRaftStates.LEADER:
@@ -542,6 +530,10 @@ class HiveRaftEngine extends EventEmitter {
     	this.state = state;
 		let stateKeys = Object.keys(HiveRaftStates);
 		console.log("---------------------------------------------------------------------- Changed State to:", stateKeys[state - 1]);
+	}
+
+	requestNodes() {
+		this.raftImplementation.requestNodes();
 	}
 }
 module.exports = HiveRaftEngine;

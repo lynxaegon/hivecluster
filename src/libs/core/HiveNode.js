@@ -33,6 +33,7 @@ module.exports = class HiveNode extends EventEmitter {
         } else {
 			seqID = payload.getSEQ();
 		}
+
 		if(payload.awaitReply()){
 			this[packets]["_" + seqID] = {
 				onReply: payload.replyFnc,
@@ -59,7 +60,7 @@ module.exports = class HiveNode extends EventEmitter {
 
 			reply(packet);
 		} else {
-			console.error("Invalid reply packet. Should drop!");
+			console.error("Invalid reply packet. Should drop!", packet.seq);
 		}
 	}
 

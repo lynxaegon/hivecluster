@@ -13,7 +13,11 @@ module.exports = {
 				}
 			],
 			networkReadyCheck: true,
-			plugins: []
+			plugins: [
+				{
+					path: "plugins/HiveDB"
+				}
+			]
 		},
 		Clients: {
 			name: "ExoSkeleton-TestNetwork",
@@ -41,6 +45,12 @@ module.exports = {
 				},
 				{
 					path: "plugins/ws_echo"
+				},
+				{
+					path: "plugins/HiveDBDriver",
+					options: {
+						network: "Nodes"
+					}
 				}
 			]
 		}

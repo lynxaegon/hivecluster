@@ -65,7 +65,6 @@ module.exports = class Network {
 			this[events].emit('message', event);
 			node.emit('message', event);
 		});
-
 		this.addTransport(options.transport);
 	}
 

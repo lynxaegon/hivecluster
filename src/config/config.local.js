@@ -45,6 +45,12 @@ module.exports = {
 				},
 				{
 					path: "plugins/ws_echo"
+				},
+				{
+					path: "plugins/HiveDBDriver",
+					options: {
+						network: "Nodes"
+					}
 				}
 			]
 		}

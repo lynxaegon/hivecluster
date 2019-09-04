@@ -4,6 +4,11 @@ const fs = require('fs');
 global.HiveClusterModules = {};
 global.HiveCluster = {};
 
+process.on('unhandledRejection', (reason, p) => {
+	console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+	// application specific logging, throwing an error, or other logic here
+});
+
 const modules = {
 	debug: "debug",
 	Utils: "libs/utils/Utils",
@@ -40,6 +45,9 @@ HiveCluster.EventBus = new (require('events').EventEmitter)();
 if (!HIVE_CONFIG.networks) {
 	throw new Error("No networks specified!");
 }
+
+console.log("GUID:", HiveCluster.id);
+
 for (let key in HIVE_CONFIG.networks) {
 	if (!HIVE_CONFIG.networks.hasOwnProperty(key))
 		continue;
@@ -69,14 +77,16 @@ for (let key in HiveCluster) {
 		networkPromises.push(
 			new Promise((resolve) => {
 				HiveCluster[key].start().then(() => {
-					console.log("===== Loading " + key + " network Plugins");
-					networkPromises.push(
-						new HiveClusterModules.HivePluginManager(HiveCluster[key], HIVE_CONFIG.networks[key].plugins).load().then(() => {
-							console.log("===== Finished loading Plugins");
-							resolve();
-						})
-					);
-				})
+					setTimeout(() => {
+						console.log("===== Loading " + key + " network Plugins");
+						networkPromises.push(
+							new HiveClusterModules.HivePluginManager(HiveCluster[key], HIVE_CONFIG.networks[key].plugins).load().then(() => {
+								console.log("===== Finished loading Plugins");
+								resolve();
+							})
+						);
+					}, 2000);
+				});
 			})
 		);
 	}
@@ -99,6 +109,10 @@ Promise.all(networkPromises).then(() => {
 
 		if (HiveCluster[key] instanceof HiveClusterModules.HiveNetwork) {
 			if(HiveCluster[key].options.networkReadyCheck){
+				// HiveCluster[key].on("/system/ready", (packet) => {
+				// 	console.log("SYSTEM READY FROM", packet.node.getID());
+				// });
+				console.log("========= HIVE SYSTEM READY (network: "+key+") =========");
 				HiveCluster[key].send(
 					new HivePacket()
 					.setRequest("/system/ready")

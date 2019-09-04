@@ -22,10 +22,10 @@ module.exports = class HTTPRouterPlugin extends HivePlugin {
 			});
 		});
 
-		this.on("/", function (httpPeer) {
+		this.on("/", (httpPeer) => {
 			httpPeer.body("empty response");
 			httpPeer.end();
-		}, this);
+		});
 	}
 
 	on(path, callback, ctx) {

@@ -30,10 +30,12 @@ module.exports = class HiveSystemTopology extends HiveTopology {
 
 	start() {
 		super.start();
-
-		if (this[internalNode]) {
-			this.events.emit("available", this[internalNode]);
-		}
+		return new Promise((resolve, reject) => {
+			if (this[internalNode]) {
+				this.events.emit("available", this[internalNode]);
+			}
+			resolve();
+		});
 	}
 
 	get type(){
@@ -179,7 +181,6 @@ module.exports = class HiveSystemTopology extends HiveTopology {
 		const source = msg[0];
 		const target = msg[1];
 		const message = msg[2];
-
 
 		const targetNode = this.networkGraph.node(target);
 		const sourceNode = this.networkGraph.node(source);

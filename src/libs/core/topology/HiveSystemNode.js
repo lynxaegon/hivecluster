@@ -7,8 +7,7 @@ module.exports = class HiveSystemNode extends BaseNode {
 				return;
 			}
 
-
-			this.peer.send([source, this.id, payload]).then(resolve).catch(reject);
+			this.peer.write("message", [source, this.id, payload]).then(resolve).catch(reject);
 		});
 	}
 

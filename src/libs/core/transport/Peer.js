@@ -91,9 +91,9 @@ module.exports = class Peer {
 
 	requestDisconnect(err) {
 		console.log(this.id, "Requested disconnect via error:", err);
-		console.log(this.id, "Failure class");
-		console.log(this.failureDetector);
-		console.log(this.id, "end of failure class with result: ", this.failureDetector.phi());
+		// console.log(this.id, "Failure class");
+		// console.log(this.failureDetector);
+		// console.log(this.id, "end of failure class with result: ", this.failureDetector.phi());
 		// if (typeof err !== 'undefined') {
 		// }
 	}

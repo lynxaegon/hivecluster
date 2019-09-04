@@ -29,9 +29,9 @@ module.exports = class WSTransport extends AbstractTransport {
 				});
 
 				if (this.options.server) {
-					resolve(true);
+					resolve(0);
 				} else {
-					this.ws.on('listening', () => resolve(true));
+					this.ws.on('listening', () => resolve(0));
 				}
 			});
 		});

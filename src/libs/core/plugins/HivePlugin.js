@@ -25,6 +25,10 @@ module.exports = class HivePlugin {
 		return this[pluginManager].getPlugin(name);
 	}
 
+	getExternalPlugin(network, name){
+		return this[pluginManager].getExternalPlugin(network, name);
+	}
+
 	pluginLoaded() {
 		this.__finishedLoading();
 	}

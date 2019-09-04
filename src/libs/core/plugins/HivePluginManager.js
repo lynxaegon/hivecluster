@@ -4,6 +4,7 @@ module.exports = class HivePluginManager {
 	constructor(hiveNetwork, list) {
 		this[plugins] = {};
 		this[hive] = hiveNetwork;
+		this[hive].pluginManager = this;
 
 		// inject plugins
 		let tmp;
@@ -26,6 +27,10 @@ module.exports = class HivePluginManager {
 			return this[plugins][name].obj;
 		}
 		return false;
+	}
+
+	getExternalPlugin(network, name){
+		return HiveCluster[network].pluginManager.getPlugin(name);
 	}
 
 	load() {

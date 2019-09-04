@@ -20,7 +20,7 @@ module.exports = class HTTPTransport extends AbstractTransport {
 			return new Promise((resolve, reject) => {
 				const listenCallback = () => {
 					this.debug('Server started at port', this.options.port);
-					resolve();
+					resolve(0);
 				};
 
 				this.server = http.createServer((req, res) => {

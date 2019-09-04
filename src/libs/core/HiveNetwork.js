@@ -48,8 +48,8 @@ module.exports = class HiveNetwork {
 				break;
 			default:
 				throw new Error("Invalid Hive Topology!");
-
 		}
+
 		// systemNetworks push each transport in a new network
 		// clientNetworks just adds a single network and pushes transports
 		// if(this.options.type == HiveNetwork.TYPE.SYSTEM){
@@ -99,9 +99,9 @@ module.exports = class HiveNetwork {
 		for (let network of this.networks) {
 			this.setup(network);
 			promises.push(
-				network.start().then((result) => {
+				network.start().then(() => {
 				}).catch((result) => {
-					console.log("network error -> ", result);
+					// console.log("network error -> ", result);
 				})
 			);
 		}
@@ -118,14 +118,14 @@ module.exports = class HiveNetwork {
 	setup(network) {
 		// HiveNode available, either directly or via a peer
 		network.on('node:available', node => {
-			console.log("node added", node.getID(), node.isDirect());
+			// console.log("node added", node.getID(), node.isDirect());
 			this.nodes.push(node);
 			this.emit("/system/node/added", node);
 		});
 
 		// HiveNode path updated
 		network.on('node:update', node => {
-			console.log("node updated", node.getID(), node.isDirect());
+			// console.log("node updated", node.getID(), node.isDirect());
 			this.emit("/system/node/updated", node);
 		});
 
@@ -133,7 +133,7 @@ module.exports = class HiveNetwork {
 		network.on('node:unavailable', node => {
 			let idx = this.nodes.indexOf(node);
 			this.nodes.splice(idx, 1);
-			console.log("node removed", node.getID(), node.isDirect());
+			// console.log("node removed", node.getID(), node.isDirect());
 			this.emit("/system/node/removed", node);
 		});
 
@@ -171,9 +171,12 @@ module.exports = class HiveNetwork {
 		this[events].emit.apply(this[events], arguments);
 	}
 
-	send(payload, nodes) {
+	send(payload, nodesFilterFnc) {
+		if(nodesFilterFnc && !HiveClusterModules.Utils.isFunction(nodesFilterFnc))
+			throw new Error("Invalid nodes filter function!");
+
 		return new Promise((resolve, reject) => {
-			nodes = this.getNodes(nodes);
+			let nodes = this.getNodes(nodesFilterFnc);
 
 			if (!nodes) {
 				reject("No nodes found!");
@@ -207,6 +210,14 @@ module.exports = class HiveNetwork {
 		return result;
 	}
 
+	getNode(nodeID) {
+		for (let i = 0; i < this.nodes.length; i++) {
+			if (nodeID == this.nodes[i].getID())
+				return this.nodes[i];
+		}
+		return null;
+	}
+
 	getInternalNode() {
 		let nodes = this.getNodes();
 		for(let node of nodes){
@@ -219,6 +230,7 @@ module.exports = class HiveNetwork {
 
 	getLowestWeightedNode() {
 		let nodes = this.getNodes();
+		nodes.sort((a, b) => (a.getID() > b.getID()) ? 1 : -1);
 		let minWeight = Number.MAX_SAFE_INTEGER;
 		let lowestWeightedNode = null;
 		for(let node of nodes){

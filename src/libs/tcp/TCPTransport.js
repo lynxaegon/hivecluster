@@ -75,12 +75,12 @@ module.exports = class TCPTransport extends AbstractTransport {
 				node.on("connected", () => {
 					readyNodes++;
 					if (readyNodes == nodes.length)
-						this[readiness]();
+						this[readiness](readyNodes);
 				});
 			}
 		}
 		else {
-			this[readiness]();
+			this[readiness](readyNodes);
 		}
 	}
 

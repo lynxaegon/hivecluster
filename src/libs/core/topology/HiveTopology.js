@@ -5,6 +5,7 @@ const graphlib = require("graphlib");
 
 module.exports = class HiveSystemTopology {
 	constructor(options) {
+		this.requiredForRediness = -1;
 		this.options = options || {};
 		this.events = new EventEmitter();
 		this.networkGraph = new graphlib.Graph({
