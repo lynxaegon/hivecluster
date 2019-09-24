@@ -8,19 +8,12 @@ module.exports = {
 					transport: require("libs/tcp/TCPTransport"),
 					options: {
 						port: HiveCluster.args.port,
-						discovery: require("libs/discovery/local")
+						discovery: require("libs/discovery/kube-api")
 					}
 				}
 			],
 			networkReadyCheck: true,
-			plugins: [
-				{
-                    path: "plugins/HiveDB/HiveDB"
-                }
-				// {
-				// 	path: "plugins/minecraft/minecraft"
-				// }
-			]
+			plugins: []
 		},
 		Clients: {
 			name: "ExoSkeleton-TestNetwork",
@@ -29,13 +22,13 @@ module.exports = {
 				{
 					transport: require("libs/http/HTTPTransport"),
 					options: {
-						port: HiveCluster.args.port - 4920 + 8000
+						port: 80
 					}
 				},
 				{
-					transport: require("libs/tcp/TCPTransport"),
+					transport: require("libs/ws/WSTransport"),
 					options: {
-						port: HiveCluster.args.port + 5920
+						port: 8080
 					}
 				}
 			],
@@ -45,12 +38,6 @@ module.exports = {
 				},
 				{
 					path: "plugins/monitoring/monitoring"
-				},
-				{
-					path: "plugins/HiveDB/HiveDBDriver",
-					options: {
-						network: "Nodes"
-					}
 				}
 			]
 		}

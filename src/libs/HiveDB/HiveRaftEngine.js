@@ -1,12 +1,14 @@
 const util = require("util");
 const EventEmitter = require('events').EventEmitter;
-const HiveDBEngine = require('./HiveDBEngine');
+const HiveDBEngine = require('./HiveDBEngine_tingo');
 const HiveRaftStates = Object.freeze({
     CANDIDATE: 1,
     FOLLOWER: 2,
     LEADER: 3
 });
 const HiveQueue = require('libs/queues/HiveQueue');
+
+const maxDBSize = 0.001; // in MB
 
 class HiveRaftEngine extends EventEmitter {
     constructor(raftID, hiveNetwork, raftImplementation, options) {
@@ -32,10 +34,23 @@ class HiveRaftEngine extends EventEmitter {
             metadata: new HiveDBEngine(this.options.collection, "metadata", this.options.group),
             data: new HiveDBEngine(this.options.collection, "data", this.options.group)
         };
+        let dbs = [this.db.metadata, this.db.data];
+		dbs.reduce((p, db) => {
+			return p.then(() => {
+				return db.warmup();
+			});
+		}, Promise.resolve()).then(() => {
+			setTimeout(() => {
+				this.emit("ready");
+			}, 50);
+		}, (err) => {
+			// a network sent an error
+			throw new Error(err);
+		});
 
-        this.setup();
+		this.setup();
 
-        this.raftImplementation.init(this);
+		this.raftImplementation.init(this);
         this.raftImplementation.on("nodeReady", (...args) => {
 			this.emit.call(this, "nodeReady", ...args);
 		});
@@ -69,7 +84,6 @@ class HiveRaftEngine extends EventEmitter {
     setup() {
 		this.hiveNetwork.on("/system/node/removed", (node) => {
 			this.removeNode(node);
-
 		});
 
 		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/nodeReady/" + this.options.group, (packet) => {
@@ -85,14 +99,21 @@ class HiveRaftEngine extends EventEmitter {
 		});
 		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/" + this.db.metadata.getType() + "/" + this.options.group + "/write", (packet) => {
 			// console.log("got write for", this.options.group);
+			let perf = HiveClusterModules.Utils.monitorPerformance();
 			this.handle(this.db.metadata, packet.data, packet.node.getID()).then(() => {
-				packet.reply();
+				packet.reply(perf.get());
+			}).catch(() => {
+				packet.reply(perf.get());
 			});
 		});
 		this.hiveNetwork.on("/hiveraft/" + this.options.collection + "/" + this.raftID + "/" + this.db.data.getType() + "/" + this.options.group + "/write", (packet) => {
 			// console.log("got write for", this.options.group);
+			let perf = HiveClusterModules.Utils.monitorPerformance();
 			this.handle(this.db.data, packet.data, packet.node.getID()).then(() => {
-				packet.reply();
+				packet.reply(perf.get());
+			}).catch(() => {
+				console.log("error on write");
+				packet.reply(perf.get());
 			});
 		});
 
@@ -217,10 +238,8 @@ class HiveRaftEngine extends EventEmitter {
 					item.db[item.packet.type](item.packet).then(() => {
 						this.getNodes((result) => {
 							if(!result || !result.followers) {
-								if(item.resolve)
-									item.resolve();
-
-								resolve();
+								// if(item.resolve)
+								// 	item.resolve();
 								return;
 							}
 
@@ -228,18 +247,22 @@ class HiveRaftEngine extends EventEmitter {
 							for(let node of result.followers){
 								nodes.push(node.node);
 							}
+
 							this.send(nodes, item.db, item.packet, () => {
-								if(item.resolve)
-									item.resolve();
-
-								resolve();
+								// if(item.resolve)
+								// 	item.resolve();
 							}, () => {
-								if(item.reject)
-									item.reject();
-
-								reject();
+								// if(item.reject)
+								// 	item.reject();
 							});
 						});
+						item.resolve();
+						resolve();
+					}).catch(() => {
+						item.reject();
+						reject();
+					}).then(() => {
+						this.checkDB(item.db);
 					});
 				});
 			});
@@ -260,7 +283,9 @@ class HiveRaftEngine extends EventEmitter {
 					break;
 				case HiveRaftStates.FOLLOWER:
 					if(from == packet.leader){
-						db[packet.type](packet).then(resolveFnc);
+						db[packet.type](packet).then(resolveFnc).then(() => {
+							this.checkDB(db);
+						});
 					} else {
 						return this.forward(db, packet).catch(function(){
 							// on fail retry
@@ -300,34 +325,38 @@ class HiveRaftEngine extends EventEmitter {
 	}
 
     promoteLeader(leader, removedNode) {
-		let query;
-		Logger.log("Leader elected: " + this.options.group + " - ", leader, leader == HiveCluster.id);
-		this.leaderID = leader;
-		if(leader == HiveCluster.id){
-			this.changeState(HiveRaftStates.LEADER);
-			query = {
-				$pull: {
-					followers: {
-						$in: []
+    	return new Promise((resolve) => {
+			let query;
+			Logger.log("Leader elected: " + this.options.group + " - ", leader, leader == HiveCluster.id);
+			this.leaderID = leader;
+			if(leader == HiveCluster.id){
+				this.changeState(HiveRaftStates.LEADER);
+				query = {
+					$pull: {
+						followers: {
+							$in: []
+						}
+					},
+					$set: {
+						leader: leader
 					}
-				},
-				$set: {
-					leader: leader
+				};
+				query.$pull.followers.$in.push(leader);
+
+				if(removedNode){
+					query.$pull.followers.$in.push(removedNode);
 				}
-			};
-			query.$pull.followers.$in.push(leader);
 
-			if(removedNode){
-				query.$pull.followers.$in.push(removedNode);
+				this.write("metadata", null, query).then(() => {
+					if(this.raftImplementation.onLeader)
+						this.raftImplementation.onLeader(this.leaderID);
+					resolve();
+				});
+			} else {
+				this.changeState(HiveRaftStates.FOLLOWER);
+				resolve();
 			}
-
-			this.write("metadata", null, query).then(() => {
-				if(this.raftImplementation.onLeader)
-					this.raftImplementation.onLeader(this.leaderID);
-			});
-		} else {
-			this.changeState(HiveRaftStates.FOLLOWER);
-		}
+		});
     }
 
     getNodes(callback, merged){
@@ -534,6 +563,33 @@ class HiveRaftEngine extends EventEmitter {
 
 	requestNodes() {
 		this.raftImplementation.requestNodes();
+	}
+
+	checkDB(db, compacted) {
+		if(this.options.group == "__global__")
+			return false;
+
+		if(!compacted && this._compacting){
+			return false;
+		}
+		this._compacting = true;
+
+		db.getSize((err, size) => {
+			if(compacted && size > 1024 * 1024 * maxDBSize){
+				console.log("...compacted but size is still greater");
+				this._compacting = false;
+				this.raftImplementation.emit("split");
+			}
+			else if(size > 1024 * 1024 * maxDBSize){
+				console.log("...compacting db");
+				db.compact(() => {
+					console.log("...compacting done");
+					this.checkDB(db, true);
+				});
+			} else {
+				this._compacting = false;
+			}
+		})
 	}
 }
 module.exports = HiveRaftEngine;

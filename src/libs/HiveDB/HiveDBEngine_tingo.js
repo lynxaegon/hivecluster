@@ -1,7 +1,7 @@
 // private config
-const memStore = true;
+const memStore = false;
 
-
+const getFolderSize = require('get-folder-size');
 const fs = require('fs-extra');
 const DBEngine = require('tingodb')({
     memStore: memStore,
@@ -9,19 +9,20 @@ const DBEngine = require('tingodb')({
     cacheSize: 10000, // 10k objs
     cacheMaxObjSize: 1024 * 10 // 10 kb
 });
-
+const maxDBSize = 32; // in MB
 const DB = DBEngine.Db;
 
 class HiveDBEngine {
     constructor(collection, type, group) {
         this.collectionName = collection;
         this.type = type;
-        let dbDirectory = './db/' + collection + '/' + group;
-        if(!memStore) {
-			fs.ensureDirSync(dbDirectory);
+        this.dbDirectory = './db/' + HiveCluster.id + "/" + collection + '/' + group;
+		this.db = new DB(this.dbDirectory, {});
+		if(!memStore) {
+			fs.ensureDirSync(this.dbDirectory);
         }
-        this.db = new DB(dbDirectory, {});
-        this.collection = this.db.collection(this.type);
+		this.collection = this.db.collection(this.type);
+		this.collection.ensureIndex({ fieldName: "_id", unique: true });
         this._debug = false;
         this.group = group;
     }
@@ -35,11 +36,19 @@ class HiveDBEngine {
     }
 
     isMetadata() {
-        return this.getCollectionName() == "metadata";
+        return this.getType() == "metadata";
     }
 
     isData() {
-        return this.getCollectionName() == "data";
+        return this.getType() == "data";
+    }
+
+    warmup() {
+        return new Promise((resolve) => {
+            this.collection.count({}, () => {
+                resolve();
+            });
+        });
     }
 
     /**
@@ -52,18 +61,20 @@ class HiveDBEngine {
         if (!packet.id) {
             throw new Error("Received packet without packet id;" + JSON.stringify(packet));
         }
-        return new Promise(function (resolve) {
-            packet.data._id = packet.id;
-            // console.log("Writing (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
-            self.collection.update({_id: packet.id}, packet.data, {upsert: 1}, function (err, result) {
+
+        return new Promise((resolve) => {
+            // packet.data._id = packet.id;
+			// console.log("Writing (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
+			let perf = HiveClusterModules.Utils.monitorPerformance();
+            self.collection.update({_id: packet.id}, packet.data, {upsert: 1}, (err, result) => {
                 if (err) {
                     Logger.log("HiveRaftDBEngine (write):", err);
                     process.exit(-1);
                     return false;
                 }
-
-                resolve();
+				// console.log("DB write", perf.get());
             });
+			resolve();
         });
     }
 
@@ -75,17 +86,16 @@ class HiveDBEngine {
             throw new Error("Received packet without packet id;" + JSON.stringify(packet));
         }
 		// console.log("Delete (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
-        return new Promise(function (resolve) {
+        return new Promise((resolve) => {
             // if (self._debug)
             //     Logger.log("Delete ID (" + (self.isMetadata() ? "metadata" : "data") + " " + self.group + "): ", packet.id, packet.data);
-            self.collection.remove(packet.data, function (err, count) {
+            self.collection.remove(packet.data, (err, count) => {
                 if (err) {
                     Logger.log("HiveDBEngine (delete):", err);
                     process.exit(-1);
                     return false;
                 }
-
-                resolve(count);
+                resolve();
             });
         });
     }
@@ -99,6 +109,14 @@ class HiveDBEngine {
             return;
 
         return this.collection.findOne(query, cb);
+    }
+
+    compact(cb) {
+        this.collection.compactCollection(cb);
+    }
+
+    getSize(cb) {
+        return getFolderSize(this.dbDirectory, cb);
     }
 }
 

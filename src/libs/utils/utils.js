@@ -61,11 +61,12 @@ class Utils {
 	}
 
 	monitorPerformance() {
+		let self = this;
 		return {
-			TIME_UNIT: Utils.TIME_UNIT.MILLISECONDS,
-			now: Utils.now(Utils.TIME_UNIT.MILLISECONDS),
+			TIME_UNIT: TIME_UNIT.MILLISECONDS,
+			now: self.now(TIME_UNIT.MILLISECONDS),
 			get: function () {
-				return Utils.now(this.TIME_UNIT) - this.now
+				return self.now(this.TIME_UNIT) - this.now
 			}
 		}
 	}
@@ -111,6 +112,27 @@ class Utils {
 		})
 	}
 
+	readFromDBCursorLinvodb3(cursor, callback){
+		let perf = HiveClusterModules.Utils.monitorPerformance();
+		return new Promise((resolve) => {
+			cursor.exec(function (err, docs) {
+				if(err || docs.length == 0){
+					callback(err, null);
+					console.log("read from db", perf.get());
+					resolve();
+					return;
+				}
+
+				for(let doc of docs){
+					callback(err, doc);
+				}
+				callback(null, null);
+				console.log("read from db", perf.get());
+				resolve();
+			});
+		})
+	}
+
 	shuffleArray(array) {
 		for (let i = array.length - 1; i > 0; i--) {
 			let j = Math.floor(Math.random() * (i + 1));
@@ -148,5 +170,5 @@ class Utils {
 	}
 }
 
-Utils.TIME_UNIT = TIME_UNIT;
 module.exports = new Utils();
+module.exports.TIME_UNIT = Utils.TIME_UNIT = TIME_UNIT;

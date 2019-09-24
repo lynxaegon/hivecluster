@@ -1,0 +1,18 @@
+{
+  "name": "minecraft",
+  "version": "1.0.0",
+  "description": "",
+  "main": "minecraft.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "minecraft-protocol": "^1.9.4",
+    "prismarine-chunk": "^1.11.0",
+    "prismarine-item": "^1.1.1",
+    "prismarine-windows": "^1.1.0",
+    "spiralloop": "^1.0.2"
+  }
+}

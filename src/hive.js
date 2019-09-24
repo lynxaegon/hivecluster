@@ -11,7 +11,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 const modules = {
 	debug: "debug",
-	Utils: "libs/utils/Utils",
+	Utils: "libs/utils/utils",
 	HiveNetwork: "libs/core/HiveNetwork",
 	HivePluginManager: "libs/core/plugins/HivePluginManager"
 };
@@ -22,6 +22,9 @@ global.Logger = new (require("libs/utils/logger"))(true);
 global.HivePacket = require("libs/core/transport/HivePacket");
 
 let argv = require('minimist')(process.argv.slice(2));
+if(process.env.HIVE_CONFIG){
+	argv.config = "config."+process.env.HIVE_CONFIG+".js";
+}
 if (!argv.config) {
 	argv.config = "config.local.js";
 }
@@ -29,10 +32,13 @@ if (!argv.config) {
 argv.config = "./config/" + argv.config;
 argv.port = argv.port || 5000;
 
+console.log("Using config:", argv.config);
+
 HiveCluster.args = argv;
 HiveCluster.weight = (new Date()).getTime();
 HiveCluster.id = HiveCluster.args.port + "";
-// HiveCluster.id = HiveClusterModules.Utils.uuidv4();
+HiveCluster.services = {};
+HiveCluster.id = HiveClusterModules.Utils.uuidv4();
 
 global.HIVE_CONFIG = require(argv.config);
 
@@ -48,6 +54,7 @@ if (!HIVE_CONFIG.networks) {
 
 console.log("GUID:", HiveCluster.id);
 
+let networks = [];
 for (let key in HIVE_CONFIG.networks) {
 	if (!HIVE_CONFIG.networks.hasOwnProperty(key))
 		continue;
@@ -57,6 +64,7 @@ for (let key in HIVE_CONFIG.networks) {
 		if (item.options.discovery) {
 			item.options.discovery = new item.options.discovery();
 		}
+		item.options.server = true;
 		transports.push(new item.transport(item.options));
 	}
 	HiveCluster[key] = new HiveClusterModules.HiveNetwork({
@@ -65,79 +73,80 @@ for (let key in HIVE_CONFIG.networks) {
 		networkReadyCheck: !!HIVE_CONFIG.networks[key].networkReadyCheck,
 		transports: transports
 	});
+	HiveCluster[key]._keyName = key;
+	networks.push(HiveCluster[key]);
 }
 
-let networkPromises = [];
-for (let key in HiveCluster) {
-	if (!HiveCluster.hasOwnProperty(key))
+let services = [];
+for (let key in HIVE_CONFIG.services) {
+	if (!HIVE_CONFIG.services.hasOwnProperty(key))
 		continue;
 
-	if (HiveCluster[key] instanceof HiveClusterModules.HiveNetwork) {
-		// this is a network
-		networkPromises.push(
-			new Promise((resolve) => {
-				HiveCluster[key].start().then(() => {
-					setTimeout(() => {
-						console.log("===== Loading " + key + " network Plugins");
-						networkPromises.push(
-							new HiveClusterModules.HivePluginManager(HiveCluster[key], HIVE_CONFIG.networks[key].plugins).load().then(() => {
-								console.log("===== Finished loading Plugins");
-								resolve();
-							})
-						);
-					}, 2000);
-				});
-			})
-		);
+	let transports = [];
+	for (let item of HIVE_CONFIG.services[key].transports) {
+		if (item.options.discovery) {
+			item.options.discovery = new item.options.discovery();
+		}
+		item.options.server = false;
+		transports.push(new item.transport(item.options));
 	}
+	HiveCluster.services[key] = new HiveClusterModules.HiveNetwork({
+		name: HIVE_CONFIG.services[key].name,
+		type: HIVE_CONFIG.services[key].type,
+		transports: transports
+	});
+	HiveCluster.services[key]._keyName = key;
+	services.push(HiveCluster.services[key]);
 }
 
-// Promise resolves when all the networks and plugins are ready
-Promise.all(networkPromises).then(() => {
-	fs.open("/tmp/healthy", 'w', function (err, fd) {
-		if (err)
-			throw err;
-		fs.close(fd, function (err) {
-			if (err)
-				throw err;
+console.log("===== Loading Services");
+services.reduce(function(p, service) {
+	return p.then(() => {
+		return service.start().then(() => {
+			console.log("== " + service._keyName + " ready!");
 		});
 	});
+}, Promise.resolve()).then(() => {
+	console.log("===== Services Ready!\n");
+	// Networks startup sequence
+	networks.reduce(function(p, network) {
+		return p.then(() => {
+			return new Promise((resolve) => {
+				network.start().then(() => {
+					console.log("===== Loading " + network._keyName + " network Plugins");
+					new HiveClusterModules.HivePluginManager(network, HIVE_CONFIG.networks[network._keyName].plugins).load()
+					.then(() => {
+						console.log("===== Finished " + network._keyName + " loading Plugins");
+						resolve();
+					});
+				});
+			})
+		});
+	}, Promise.resolve()).then(() => {
+		// all network finished sequentially
+		fs.open("/tmp/healthy", 'w', function (err, fd) {
+			if (err)
+				throw err;
+			fs.close(fd, function (err) {
+				if (err)
+					throw err;
+			});
+		});
 
-	for (let key in HiveCluster) {
-		if (!HiveCluster.hasOwnProperty(key))
-			continue;
-
-		if (HiveCluster[key] instanceof HiveClusterModules.HiveNetwork) {
-			if(HiveCluster[key].options.networkReadyCheck){
-				// HiveCluster[key].on("/system/ready", (packet) => {
-				// 	console.log("SYSTEM READY FROM", packet.node.getID());
-				// });
-				console.log("========= HIVE SYSTEM READY (network: "+key+") =========");
-				HiveCluster[key].send(
+		for (let network of networks) {
+			if(network.options.networkReadyCheck){
+				console.log("========= HIVE SYSTEM READY (network: " + network._keyName + ") =========");
+				network.send(
 					new HivePacket()
 					.setRequest("/system/ready")
 				);
 			}
 		}
-	}
-
-	// HiveCluster.Nodes.on("test", function (packet) {
-	// 	console.log(packet);
-	// 	// console.log(arguments);
-	// 	packet.reply();
-	// });
-	//
-	// setTimeout(() => {
-	// 	HiveCluster.Nodes.send(new HivePacket()
-	// 	.setRequest("test")
-	// 	.setData("haha, hello")
-	// 	.onReply((packet) => {
-	// 		console.log("got reply:", packet.data);
-	// 	})
-	// 	.onReplyFail(() => {
-	// 		console.log("failed packet!");
-	// 	}), HiveCluster.Nodes.getNodes()).then(() => {
-	// 		console.log("seent!");
-	// 	});
-	// }, 1000);
+	}, (err) => {
+		// a network sent an error
+		throw new Error(err);
+	});
+}, (err) => {
+	// a network sent an error
+	throw new Error(err);
 });

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: exoskeleton-db
+  labels:
+    app: exoskeleton-db
+spec:
+  ports:
+  - name: http
+    port: 8880
+    targetPort: 80
+  selector:
+    app: exoskeleton-db

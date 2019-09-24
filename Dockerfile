@@ -14,4 +14,4 @@ RUN npm install
 RUN apk del git
 
 ENTRYPOINT ["tini", "--"]
-CMD ["node", "--trace-warnings", "/app/hive.js", "--config", "config.kube.js"]
+CMD ["node", "--trace-warnings", "/app/hive.js", "--config", "config.js"]

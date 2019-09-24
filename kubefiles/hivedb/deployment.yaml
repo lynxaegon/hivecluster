@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: exoskeleton-frontend
+  name: exoskeleton-db
 spec:
   replicas: 2
   strategy:
@@ -11,15 +11,15 @@ spec:
   template:
     metadata:
       labels:
-        app: exoskeleton-frontend
+        app: exoskeleton-db
     spec:
       containers:
-      - name: exoskeleton-frontend
+      - name: exoskeleton-db
         image: lynxaegon/hivecluster:latest
         imagePullPolicy: Always
         resources:
           requests:
-            cpu: 10m
+            cpu: 100m
         readinessProbe:
           exec:
             command:

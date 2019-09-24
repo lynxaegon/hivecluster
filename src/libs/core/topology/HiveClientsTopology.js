@@ -24,7 +24,7 @@ module.exports = class HiveClientsTopology extends HiveTopology {
 		super.addPeer(peer);
 
 		if (!peer[networkSeen]) {
-			peer.on('message', msg => this.handleMessage(peer, msg));
+			peer.on('message', (msg, time) => this.handleMessage(peer, msg, time));
 
 			peer.on('disconnected', () => {
 				this.peers.delete(peer.id);
@@ -49,11 +49,12 @@ module.exports = class HiveClientsTopology extends HiveTopology {
 		}
 	}
 
-	handleMessage(peer, msg) {
+	handleMessage(peer, msg, time) {
 		this.events.emit('message', {
 			node: this.networkGraph.node(peer.id),
 			protocol: msg[0],
-			data: msg[1]
+			data: msg[1],
+			time: time
 		});
 	}
 };

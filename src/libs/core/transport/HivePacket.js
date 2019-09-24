@@ -53,8 +53,7 @@ module.exports = class HivePacket {
 	}
 
 	serialize(_seq) {
-		if(this[seq] == 0)
-			this[seq] = _seq;
+		this[seq] = _seq;
 
 		let packet = {
 			req: this[request],
@@ -76,6 +75,7 @@ module.exports = class HivePacket {
 		return {
 			seq: packet.data.seq || packet.data.seqr,
 			data: packet.data.data,
+			time: packet.time,
 			node: packet.node,
 			reply: function (data) {
 				// Important! Only 1 reply supported!
@@ -83,7 +83,7 @@ module.exports = class HivePacket {
 					throw new Error("Cannot reply to a reply packet!")
 				}
 
-				this.node.send(new HivePacket()
+				return this.node.send(new HivePacket()
 					.setData(data)
 					.replyFor(packet.data.seq)
 				);

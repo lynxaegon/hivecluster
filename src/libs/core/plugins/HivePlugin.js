@@ -1,6 +1,10 @@
 const pluginManager = Symbol("pluginManager");
-module.exports = class HivePlugin {
+const EventEmitter = require('events').EventEmitter;
+
+module.exports = class HivePlugin extends EventEmitter {
 	constructor(pluginMgr, hiveNetwork, options) {
+		super();
+
 		this[pluginManager] = pluginMgr;
 		this.hiveNetwork = hiveNetwork;
 		this.options = options;
@@ -9,8 +13,8 @@ module.exports = class HivePlugin {
 			this.__finishedLoading = resolve;
 		});
 
-		this.setup();
-		this.pluginLoaded();
+		if(!this.setup())
+			this.pluginLoaded();
 	}
 
 	setup() {

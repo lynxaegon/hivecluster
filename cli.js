@@ -5,7 +5,7 @@ const http = require("http");
 // change dir to codebase
 process.chdir('src');
 
-var TTY_POOL = [8, 9, 10, 11];
+var TTY_POOL = [3, 4, 5, 6];
 for(var i in TTY_POOL){
 	TTY_POOL[i] = "/dev/ttys" + TTY_POOL[i].toString().padStart(3, '0');
 	TTY_POOL[i] = {
@@ -137,6 +137,8 @@ const commands = {
 		DEBUG: "null"
 	},
 	start: function(count){
+		spawn("rm", ["-rf", "db/"], {stdio: [ 'ignore' ]});
+
 		count = count || TTY_POOL.length;
 		var total = 0;
 		for(var i in TTY_POOL){
@@ -255,6 +257,16 @@ const commands = {
 		commands.kill(getRandomInt(0, TTY_POOL.length - 1));
 		setTimeout(function(){
 			commands.spawn();
+		}, 500);
+	},
+	minecraft: function(){
+		spawn("rm", ["-rf", "db/"], {stdio: [ 'ignore' ]});
+		commands.spawn();
+		setTimeout(function(){
+			commands.spawn("--port 5001", "--config", "config.local2.js");
+			setTimeout(function(){
+				commands.spawn("--port 5002", "--config", "config.local3.js");
+			}, 500);
 		}, 500);
 	},
 	benchmark: function(name){

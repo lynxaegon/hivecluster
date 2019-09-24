@@ -2,7 +2,7 @@ const AbstractTransport = require("../core/transport/AbstractTransport");
 const addPeer = AbstractTransport.addPeer;
 const events = AbstractTransport.events;
 const TCPPeer = require("./TCPPeer");
-const net = require('net');
+const net = require('turbo-net');
 
 const setupPeer = Symbol('setupPeer');
 const stoppables = Symbol('stoppables');
@@ -21,34 +21,51 @@ module.exports = class TCPTransport extends AbstractTransport {
 	}
 
 	start(options) {
-		return super.start(options).then(started => {
-			if (!started)
-				return false;
+		if(this.options.server){
+			return super.start(options).then(started => {
+				if (!started)
+					return false;
 
-			return new Promise((resolve) => {
-				this[readiness] = resolve;
-				const listenCallback = () => {
-					this.port = this.server.address().port;
-					this.debug('Server started at port', this.port);
-				};
+				return new Promise((resolve) => {
+					this[readiness] = resolve;
+					const listenCallback = () => {
+						this.port = this.server.address().port;
+						this.debug('Server started at port', this.port);
+					};
 
-				this.server = net.createServer((socket) => {
-					const peer = new TCPPeer(this);
-					peer.setSocket(socket);
-					this[addPeer](peer);
-					peer.auth();
-				}).listen(this.options.port, listenCallback);
+					this.server = net.createServer((socket) => {
+						const peer = new TCPPeer(this);
+						peer.setSocket(socket);
+						this[addPeer](peer);
+						peer.auth();
+					});
+					this.server.listen(this.options.port, listenCallback);
 
-				this[stoppables].push({
-					stop: () => this.server.close()
+					this[stoppables].push({
+						stop: () => this.server.close()
+					});
+
+
+					if (this.options.discovery) {
+						this.options.discovery.start(this);
+					} else {
+						this[readiness]();
+					}
 				});
-
-
+			});
+		} else {
+			return new Promise((resolve, reject) => {
+				this.id = HiveCluster.id;
+				this.started = true;
+				this[readiness] = resolve;
 				if (this.options.discovery) {
 					this.options.discovery.start(this);
+				} else {
+					this[readiness]();
 				}
+
 			});
-		});
+		}
 	}
 
 	stop() {
@@ -66,11 +83,13 @@ module.exports = class TCPTransport extends AbstractTransport {
 		let nodes = [];
 		let readyNodes = 0;
 		if (peers !== null) {
+
 			for (let peer of peers) {
 				nodes.push(
 					this.addPeer(peer.address, peer.port)
 				);
 			}
+
 			for (let node of nodes) {
 				node.on("connected", () => {
 					readyNodes++;

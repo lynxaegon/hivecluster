@@ -2,19 +2,19 @@ const HivePlugin = require('libs/core/plugins/HivePlugin');
 const HiveRaftEngine = require('libs/HiveDB/HiveRaftEngine');
 const HiveRaft_Global = require('libs/HiveDB/rafts/HiveRaft_Global');
 const HiveRaft_Group = require('libs/HiveDB/rafts/HiveRaft_Group');
+const HiveQueue = require('libs/queues/HiveQueue');
 
-// const HiveQueueFixed = require('libs/queues/HiveQueueFixed');
-// const HiveQueue = require('libs/queues/HiveQueue');
 // const queues = {
-	// reqNodes: new HiveQueueFixed((item) => {
-	// 	return new Promise((resolve, reject) => {
-	// 		// console.log("ReqMoreNodes", item);
-	// 		reject();
-	// 	});
-	// }),
-	// write: new HiveQueue((item) => {
-	//
-	// })
+// 	write: new HiveQueue((item) => {
+// 		return new Promise((resolve, reject) => {
+// 			item.action(resolve, reject);
+// 		});
+// 	}),
+// 	read: new HiveQueue((item) => {
+// 		return new Promise((resolve, reject) => {
+// 			item.action(resolve, reject);
+// 		});
+// 	})
 // };
 
 const globalRaft = Symbol("global_raft");
@@ -25,8 +25,11 @@ module.exports = class HiveDB extends HivePlugin {
     	this.collection = "testdb";
     	this.raftID = "HiveDB";
 
-
         this[globalRaft] = new HiveRaftEngine(this.raftID, this.hiveNetwork, new HiveRaft_Global());
+		this[globalRaft].on("ready", () => {
+			this.pluginLoaded();
+		});
+
 		this[globalRaft].on("newLeader", (nodeID) => {
 			console.log("got new leader", nodeID);
 		});
@@ -64,6 +67,8 @@ module.exports = class HiveDB extends HivePlugin {
 									hiveDBinited: true
 								}
 							});
+							this._isReady = true;
+							this.emit("ready");
 						})
 						.onReplyFail(() => {
 							throw new Error("Failed to join group '"+ group +"'")
@@ -77,22 +82,11 @@ module.exports = class HiveDB extends HivePlugin {
 		this.hiveNetwork.on("/hivedb/group/join", (packet) => {
 			// console.log("group join req", packet.data);
 			if(packet.data.group && !packet.data.sync){
-				let group = new HiveRaft_Group(packet.data.group, this[globalRaft]);
-				this[raftGroups][packet.data.group] = new HiveRaftEngine(this.raftID, this.hiveNetwork, group, {
-					collection: this.collection,
-					group: packet.data.group
+				// TODO: insert create group here
+				this.createGroup(packet.data.group, packet.data.leader).then(() => {
+					packet.reply();
 				});
-				this[raftGroups][packet.data.group].promoteLeader(packet.data.leader);
-				this.hiveNetwork.getNode(packet.data.leader).send(new HivePacket()
-					.setRequest("/hivedb/group/join")
-					.setData({
-						group: packet.data.group,
-						sync: true
-					})
-					.onReply(() => {
-						packet.reply()
-					})
-				);
+
 				// setInterval(() => {
 				// 	console.log("------------------------------------------------------");
 				// 	this[raftGroups][packet.data.group].printDebugInfo();
@@ -141,10 +135,51 @@ module.exports = class HiveDB extends HivePlugin {
 
 		});
 
+		this.hiveNetwork.on("/hivedb/request/split", (packet) => {
+			console.log("SPLIT REQUEST:", packet.data);
+		});
+
+		this.hiveNetwork.on("/hivedb/" + this.collection + "/" + this.raftID + "/write", this.onWrite);
+		this.hiveNetwork.on("/hivedb/" + this.collection + "/" + this.raftID + "/query", this.onQuery);
+		this.hiveNetwork.on("/hivedb/" + this.collection + "/" + this.raftID + "/delete", this.onDelete);
+
 		// setInterval(() => {
 		// 	this[globalRaft].printDebugInfo();
 		// }, 1000);
+
+		setTimeout(() => {
+			this.generateData();
+		}, 3000);
+
+		return true;
     }
+
+    createGroup(groupName, leader) {
+    	return new Promise((resolve, reject) => {
+			let group = new HiveRaft_Group(groupName, this[globalRaft]);
+			this[raftGroups][groupName] = new HiveRaftEngine(this.raftID, this.hiveNetwork, group, {
+				collection: this.collection,
+				group: groupName
+			});
+			this[raftGroups][groupName].once("ready", () => {
+				this[raftGroups][groupName].promoteLeader(leader).then(() => {
+					this.hiveNetwork.getNode(leader).send(new HivePacket()
+						.setRequest("/hivedb/group/join")
+						.setData({
+							group: groupName,
+							sync: true
+						})
+						.onReply(resolve)
+						.onReplyFail(reject)
+					);
+				});
+			});
+
+			this[raftGroups][groupName].on("split", (group, groupLeft, groupRight) => {
+				console.log("HiveRaftEngine requested a split", group, groupLeft, groupRight);
+			});
+		});
+	}
 
     checkGroups(nodeID){
 		if(HiveCluster.id == nodeID)
@@ -205,6 +240,18 @@ module.exports = class HiveDB extends HivePlugin {
 		});
 	}
 
+	onWrite(packet){
+
+	}
+
+	onQuery(packet){
+
+	}
+
+	onDelete(packet){
+
+	}
+
 	lookupLeaderOfID(id){
 		return new Promise((resolve, reject) => {
 			let cursor = this[globalRaft].find({
@@ -226,42 +273,42 @@ module.exports = class HiveDB extends HivePlugin {
 
 					if(item == null){
 						cursor.close();
-						reject({
-							err: "Couldn't find a group where to fit the id '"+id+"'",
-							code: "HIVEDB_ERROR_WRITE"
-						});
-						return false;
+					reject({
+						err: "Couldn't find a group where to fit the id '"+id+"'",
+						code: "HIVEDB_ERROR_WRITE"
+					});
+					return false;
 						// all finished
 					} else {
-						let group = item._id.replace("group/", "");
-						let split = group.split("%");
-						for(let i in split){
-							if(split[i] == "@"){
-								split[i] = id;
-							}
-						}
-						let tmp = [id].concat(split);
-
-						tmp.sort();
-						if(tmp[1] == id){
-							// the document hit between the 2 splits
-							let node = self.hiveNetwork.getNode(item.leader);
-							if(!node){
-								reject({
-									err: "Couldn't find leader of group '"+group+"' to insert '"+id+"'",
-									code: "HIVEDB_ERROR_NODE_MISSING"
-								});
-								return false;
-							}
-
-							resolve({
-								group: group,
-								leader: node
-							});
-						} else {
-							findLeaderForGroup();
+					let group = item._id.replace("group/", "");
+					let split = group.split("%");
+					for (let i in split) {
+						if (split[i] == "@") {
+							split[i] = id;
 						}
 					}
+					let tmp = [id].concat(split);
+
+					tmp.sort();
+					if (tmp[1] == id) {
+						// the document hit between the 2 splits
+							let node = self.hiveNetwork.getNode(item.leader);
+						if (!node) {
+							reject({
+								err: "Couldn't find leader of group '" + group + "' to insert '" + id + "'",
+								code: "HIVEDB_ERROR_NODE_MISSING"
+							});
+							return false;
+						}
+
+						resolve({
+							group: group,
+							leader: node
+						});
+						} else {
+							findLeaderForGroup();
+					}
+				}
 				})
 			})();
 		});
@@ -311,6 +358,22 @@ module.exports = class HiveDB extends HivePlugin {
 		if(err){
 			throw new Error("Fatal error when reading from db!");
 			process.exit(-1);
+		}
+	}
+
+	isReady(){
+		return this._isReady;
+	}
+
+	generateData() {
+		for(let i = 0; i < 100; i++){
+			setTimeout(() => {
+				let data = {};
+				for(let j = 0; j < 10; j++){
+					data[HiveClusterModules.Utils.uuidv4()] = HiveClusterModules.Utils.uuidv4();
+				}
+				this.write(HiveClusterModules.Utils.uuidv4(), data)
+			}, 10 + i);
 		}
 	}
 };

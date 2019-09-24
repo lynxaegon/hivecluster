@@ -58,6 +58,9 @@ module.exports = class HiveNode extends EventEmitter {
 			clearTimeout(this[packets]["_" + packet.seq].timeout);
 			delete this[packets]["_" + packet.seq];
 
+			// if(packet.data && packet.data._t){
+			// 	console.log("packet delay:", HiveClusterModules.Utils.now(HiveClusterModules.Utils.TIME_UNIT.MILLISECONDS) - packet.data._t)
+			// }
 			reply(packet);
 		} else {
 			console.error("Invalid reply packet. Should drop!", packet.seq);
@@ -90,7 +93,7 @@ module.exports = class HiveNode extends EventEmitter {
 	}
 
 	[seq]() {
-		if (!this[_seq] || this[_seq] >= 100)
+		if (!this[_seq] || this[_seq] >= Number.MAX_SAFE_INTEGER)
 			this[_seq] = 0;
 
 		this[_seq]++;

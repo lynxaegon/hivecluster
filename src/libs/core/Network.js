@@ -55,11 +55,11 @@ module.exports = class Network {
 
 		topology.on('message', msg => {
 			const node = nodes.get(msg.node.id);
-
 			const event = {
 				node: node,
 				protocol: msg.protocol,
-				data: msg.data
+				data: msg.data,
+				time: msg.time
 			};
 
 			this[events].emit('message', event);

@@ -44,6 +44,7 @@ module.exports = class NetworkPeer extends Peer {
 
 			if (type != "ping")
 				this.debug('Incoming', type, 'with payload', payload);
+
 			this.events.emit(type, payload);
 		});
 
@@ -84,15 +85,11 @@ module.exports = class NetworkPeer extends Peer {
 
 			if (type != "ping")
 				this.debug('Sending', type, 'with data', payload);
+
 			const data = msgpack.encode([String(type), payload]);
 			// console.log("Sending data length:", data.length);
 			// console.log("Sending data:", type, payload);
 			try {
-				HiveCluster.EventBus.emit("/debug/record", {
-					to: String(this.id),
-					type: String(type),
-					payload: payload
-				});
 				this.socket.write(data);
 				resolve();
 			} catch (err) {
